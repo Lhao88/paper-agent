@@ -1,0 +1,12 @@
+{
+  "actions": [
+    {
+      "action_id": "search-0",
+      "kind": "search_works",
+      "question_ids": ["q1"],
+      "rationale": "先检索图神经网络相关工作。",
+      "query": "graph neural networks",
+      "providers": ["openalex"]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "candidates": [
+    {
+      "field_name": "method",
+      "value_zh": "在合成ToyCorpus上检查测试覆盖。",
+      "chunk_id": "$chunk_0",
+      "quote": "This synthetic study evaluates test coverage on ToyCorpus.",
+      "statement_type": "reported_fact"
+    }
+  ]
+}

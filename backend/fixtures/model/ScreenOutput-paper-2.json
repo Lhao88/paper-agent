@@ -1,0 +1,6 @@
+{
+  "summary_zh":"合成演示论文，讨论综述中的证据与引用支持。",
+  "matched_question_ids":["q2","q3"], "relevance":3, "decision":"candidate",
+  "reason":"摘要与证据支持和评价问题相关，完整细节需要进一步资料。",
+  "missing_information":["full_text"]
+}

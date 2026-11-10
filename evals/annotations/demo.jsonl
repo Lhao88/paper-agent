@@ -1,0 +1,3 @@
+{"paper_key": "mock:paper-1:v1", "relevance": 4, "key_paper": true, "synthetic": true, "rater_id": "fixture-author-not-human-study"}
+{"paper_key": "mock:paper-2:v1", "relevance": 4, "key_paper": true, "synthetic": true, "rater_id": "fixture-author-not-human-study"}
+{"paper_key": "mock:paper-3:v1", "relevance": null, "key_paper": false, "synthetic": true, "rater_id": "fixture-author-not-human-study"}

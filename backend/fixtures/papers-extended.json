@@ -1,0 +1,258 @@
+[
+  {
+    "title": "Synthetic Example: Graph Retrieval for Literature Research",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2024,
+    "abstract": "We study graph retrieval for academic literature research and compare retrieval methods.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-1:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-1",
+        "version_label": "v1",
+        "abstract": "We study graph retrieval for academic literature research and compare retrieval methods.",
+        "raw_payload": {
+          "synthetic": true,
+          "fixture_pdf": "paper-1.pdf"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example: Evidence-grounded Literature Synthesis",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "We investigate evidence grounding and citation support in literature synthesis.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-2:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-2",
+        "version_label": "v1",
+        "abstract": "We investigate evidence grounding and citation support in literature synthesis.",
+        "raw_payload": {
+          "synthetic": true,
+          "fixture_pdf": "paper-2.pdf"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example: A Paper Without an Abstract",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2023,
+    "abstract": null,
+    "abstract_status": "missing",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-3",
+        "version_label": "v1",
+        "abstract": null,
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 4: Missing abstract",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": null,
+    "abstract_status": "missing",
+    "abstract_source_key": "mock:paper-4:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-4",
+        "version_label": "v1",
+        "abstract": null,
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 5: Synthetic marine algae growth study, unrelated to academic retrieval.",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "Synthetic marine algae growth study, unrelated to academic retrieval.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-5:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-5",
+        "version_label": "v1",
+        "abstract": "Synthetic marine algae growth study, unrelated to academic retrieval.",
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 6: Synthetic marine algae growth study, unrelated to academic retrieval.",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "Synthetic marine algae growth study, unrelated to academic retrieval.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-6:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-6",
+        "version_label": "v1",
+        "abstract": "Synthetic marine algae growth study, unrelated to academic retrieval.",
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 7: This synthetic study examines evaluation limitations of evidence retri",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "This synthetic study examines evaluation limitations of evidence retrieval.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-7:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-7",
+        "version_label": "v1",
+        "abstract": "This synthetic study examines evaluation limitations of evidence retrieval.",
+        "raw_payload": {
+          "synthetic": true,
+          "fixture_pdf": "paper-7.pdf"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 8: Synthetic metadata organization for literature research, with insuffic",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-8:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-8",
+        "version_label": "v1",
+        "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 9: Synthetic metadata organization for literature research, with insuffic",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-9:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-9",
+        "version_label": "v1",
+        "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example 10: Synthetic metadata organization for literature research, with insuffic",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-10:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-10",
+        "version_label": "v1",
+        "abstract": "Synthetic metadata organization for literature research, with insufficient evaluation.",
+        "raw_payload": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example: Graph Retrieval for Literature Research",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2024,
+    "abstract": "We study graph retrieval for academic literature research and compare retrieval methods.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-1:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-1",
+        "version_label": "v1",
+        "abstract": "We study graph retrieval for academic literature research and compare retrieval methods.",
+        "raw_payload": {
+          "synthetic": true,
+          "fixture_pdf": "paper-1.pdf"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Synthetic Example: Evidence-grounded Literature Synthesis",
+    "authors": [
+      "Fixture Author"
+    ],
+    "year": 2025,
+    "abstract": "We investigate evidence grounding and citation support in literature synthesis.",
+    "abstract_status": "provided",
+    "abstract_source_key": "mock:paper-2:v1",
+    "sources": [
+      {
+        "provider": "mock",
+        "provider_id": "paper-2",
+        "version_label": "v1",
+        "abstract": "We investigate evidence grounding and citation support in literature synthesis.",
+        "raw_payload": {
+          "synthetic": true,
+          "fixture_pdf": "paper-2.pdf"
+        }
+      }
+    ]
+  }
+]

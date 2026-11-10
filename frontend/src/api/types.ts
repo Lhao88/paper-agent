@@ -1,0 +1,21 @@
+import type { components } from "./schema";
+
+export type Project = components["schemas"]["ProjectView"];
+export type ProjectPage = components["schemas"]["ProjectPage"];
+export type ProjectDetails = components["schemas"]["ProjectDetails"];
+export type Run = components["schemas"]["RunView"];
+export type Plan = components["schemas"]["ResearchPlan"];
+export type PlanDraft = components["schemas"]["PlanDraft"];
+export type PlanView = components["schemas"]["PlanView"];
+export type Paper = components["schemas"]["PaperView"];
+export type PaperPage = components["schemas"]["PaperPage"];
+export type PaperDetails = components["schemas"]["PaperDetailsView"];
+export type ReviewView = components["schemas"]["ReviewView"];
+export type ReviewListItem = components["schemas"]["ReviewListItem"];
+export type ClaimBlock = components["schemas"]["StoredClaim"];
+export type Evidence = components["schemas"]["EvidenceView"];
+export type Scope = components["schemas"]["Scope"];
+export type ResearchSpec = components["schemas"]["ResearchSpec"];
+export type NotebookView = components["schemas"]["NotebookView"];
+export type NotebookPage = components["schemas"]["NotebookPage"];
+export type ClaimView = components["schemas"]["ClaimView"];

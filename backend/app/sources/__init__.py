@@ -1,0 +1,1 @@
+"""Bounded scholarly-source adapters."""

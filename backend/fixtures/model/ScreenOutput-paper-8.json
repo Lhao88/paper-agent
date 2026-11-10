@@ -1,0 +1,10 @@
+{
+  "summary_zh": "原创合成资料，用于测试筛选边界。",
+  "matched_question_ids": [
+    "q1"
+  ],
+  "relevance": 2,
+  "decision": "candidate",
+  "reason": "合成金标的预期分类，不代表真实领域相关性。",
+  "missing_information": []
+}

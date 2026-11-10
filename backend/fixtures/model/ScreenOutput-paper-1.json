@@ -1,0 +1,6 @@
+{
+  "summary_zh":"合成演示论文，讨论学术文献的图检索方法。",
+  "matched_question_ids":["q1"], "relevance":4, "decision":"priority",
+  "reason":"演示摘要直接描述检索方法；不代表真实论文判断。",
+  "missing_information":[]
+}

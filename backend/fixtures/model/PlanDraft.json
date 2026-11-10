@@ -1,0 +1,10 @@
+{
+  "topic": "模拟研究主题",
+  "questions": [
+    {"question_id":"q1","text_zh":"相关检索方法如何组织？","search_terms_en":["graph retrieval","academic literature"],"priority":1},
+    {"question_id":"q2","text_zh":"证据与引用如何支持综述？","search_terms_en":["evidence grounding","literature synthesis"],"priority":1},
+    {"question_id":"q3","text_zh":"已有方法的局限和评价方式是什么？","search_terms_en":["evaluation","limitations"],"priority":2}
+  ],
+  "scope":{"year_from":null,"year_to":null,"languages":["en"],"include_terms":[],"exclude_terms":[],"enabled_sources":["openalex"]},
+  "assumptions":["这是原创合成资料的演示计划，不代表真实学术调研。"]
+}

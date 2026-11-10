@@ -1,0 +1,13 @@
+{
+  "questions": [
+    {"question_id":"q1","findings":"合成资料展示了检索和证据整理两类方法。","evidence_ids":["$evidence_0","$evidence_1"],"agreements":[],"disagreements":[],"gaps":["合成资料不能支持真实学术优劣结论。"]},
+    {"question_id":"q2","findings":"证据需回到原文核对。","evidence_ids":["$evidence_0"],"agreements":[],"disagreements":[],"gaps":["仍需人工核验语义支持。"]},
+    {"question_id":"q3","findings":"当前材料覆盖有限。","evidence_ids":[],"agreements":[],"disagreements":[],"gaps":["缺少独立真实评价。"]}
+  ],
+  "outline": [
+    {"section_id":"s1","title":"背景与研究范围","goal":"说明合成演示范围","question_ids":["q1"],"evidence_ids":["$evidence_0","$evidence_1"]},
+    {"section_id":"s2","title":"概念与研究分支","goal":"组织方法","question_ids":["q1"],"evidence_ids":["$evidence_0","$evidence_1"]},
+    {"section_id":"s3","title":"方法比较与进展分歧","goal":"解释条件差异，不排名","question_ids":["q1","q2"],"evidence_ids":["$evidence_0","$evidence_1"]},
+    {"section_id":"s4","title":"局限与待验证方向","goal":"保留资料缺口","question_ids":["q3"],"evidence_ids":["$evidence_0","$evidence_1"]}
+  ]
+}

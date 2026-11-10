@@ -1,0 +1,27 @@
+{
+  "synthetic": true,
+  "profile_version": "extended-v1",
+  "raw_records": 12,
+  "unique_papers": 10,
+  "relevance": {
+    "paper-1": 4,
+    "paper-2": 4,
+    "paper-3": null,
+    "paper-4": null,
+    "paper-5": 0,
+    "paper-6": 0,
+    "paper-7": 4,
+    "paper-8": 2,
+    "paper-9": 2,
+    "paper-10": 2
+  },
+  "expected_selected": [
+    "paper-1",
+    "paper-2",
+    "paper-7"
+  ],
+  "missing_abstracts": [
+    "paper-3",
+    "paper-4"
+  ]
+}

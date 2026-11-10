@@ -1,0 +1,12 @@
+{
+  "actions": [
+    {
+      "action_id": "search-1",
+      "kind": "search_works",
+      "question_ids": ["q2"],
+      "rationale": "局限列仍空，改查方法局限。",
+      "query": "graph neural networks 局限",
+      "providers": ["openalex"]
+    }
+  ]
+}

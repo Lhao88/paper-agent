@@ -1,0 +1,6 @@
+{
+  "queries": [
+    {"query_id":"s1","question_ids":["q1"],"provider":"openalex","terms":"graph retrieval academic literature","year_from":null,"year_to":null},
+    {"query_id":"s2","question_ids":["q2","q3"],"provider":"openalex","terms":"evidence grounding literature synthesis evaluation","year_from":null,"year_to":null}
+  ]
+}

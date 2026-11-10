@@ -1,0 +1,14 @@
+{
+  "name": "synthetic-A1",
+  "strategy": "A1",
+  "dataset": "benchmark.dev.jsonl",
+  "repetitions": 1,
+  "budgets": {
+    "max_candidates": 10,
+    "max_screen_papers": 5,
+    "max_deep_read_papers": 3,
+    "max_llm_calls": 40
+  },
+  "llm_mode": "mock",
+  "protocol_version": "v1"
+}

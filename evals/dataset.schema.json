@@ -1,0 +1,138 @@
+{
+  "$defs": {
+    "Scope": {
+      "additionalProperties": false,
+      "properties": {
+        "year_from": {
+          "anyOf": [
+            {
+              "maximum": 2200,
+              "minimum": 1800,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year From"
+        },
+        "year_to": {
+          "anyOf": [
+            {
+              "maximum": 2200,
+              "minimum": 1800,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year To"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "include_terms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Include Terms",
+          "type": "array"
+        },
+        "exclude_terms": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude Terms",
+          "type": "array"
+        },
+        "enabled_sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Enabled Sources",
+          "type": "array"
+        }
+      },
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "topic_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "title": "Topic Id",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "dev",
+        "test"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "topic_zh": {
+      "title": "Topic Zh",
+      "type": "string"
+    },
+    "cutoff_date": {
+      "format": "date",
+      "title": "Cutoff Date",
+      "type": "string"
+    },
+    "question_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Question Ids",
+      "type": "array"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "corpus_snapshot": {
+      "title": "Corpus Snapshot",
+      "type": "string"
+    },
+    "gold_annotations": {
+      "title": "Gold Annotations",
+      "type": "string"
+    },
+    "document_manifest": {
+      "title": "Document Manifest",
+      "type": "string"
+    },
+    "protocol_version": {
+      "title": "Protocol Version",
+      "type": "string"
+    },
+    "synthetic": {
+      "default": false,
+      "title": "Synthetic",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "topic_id",
+    "split",
+    "topic_zh",
+    "cutoff_date",
+    "question_ids",
+    "corpus_snapshot",
+    "gold_annotations",
+    "document_manifest",
+    "protocol_version"
+  ],
+  "title": "BenchmarkTopic",
+  "type": "object"
+}

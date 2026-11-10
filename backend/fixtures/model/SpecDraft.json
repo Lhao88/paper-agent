@@ -1,0 +1,55 @@
+{
+  "topic": "图神经网络",
+  "questions": [
+    {
+      "question_id": "q1",
+      "text_zh": "图神经网络如何组织文献检索？",
+      "search_terms_en": ["graph neural networks"],
+      "priority": 1
+    },
+    {
+      "question_id": "q2",
+      "text_zh": "这些方法有哪些局限？",
+      "search_terms_en": ["limitations"],
+      "priority": 1
+    },
+    {
+      "question_id": "q3",
+      "text_zh": "如何评价这些方法？",
+      "search_terms_en": ["evaluation"],
+      "priority": 2
+    }
+  ],
+  "scope": {
+    "year_from": null,
+    "year_to": null,
+    "languages": ["en"],
+    "include_terms": [],
+    "exclude_terms": [],
+    "enabled_sources": ["openalex"]
+  },
+  "inclusion_rules": [
+    {"rule_id": "r1", "polarity": "include", "text_zh": "讨论图神经网络方法的论文"}
+  ],
+  "columns": [
+    {
+      "column_id": "c1",
+      "question_id": "q1",
+      "field": "method",
+      "required": true,
+      "description_zh": "方法"
+    },
+    {
+      "column_id": "c2",
+      "question_id": "q2",
+      "field": "limitation",
+      "required": true,
+      "description_zh": "局限"
+    }
+  ],
+  "coverage": [
+    {"question_id": "q1", "min_included_papers": 1, "required_column_ids": ["c1"]},
+    {"question_id": "q2", "min_included_papers": 1, "required_column_ids": ["c2"]}
+  ],
+  "assumptions": ["这是合成语料上的覆盖循环演示。"]
+}
