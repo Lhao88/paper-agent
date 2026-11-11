@@ -5,6 +5,7 @@ import { api, errorText, post } from "../../api/client";
 import type {
   NotebookView,
   PlanDraft,
+  PaperPage,
   PlanView,
   ProjectDetails,
   ResearchSpec,
@@ -12,7 +13,7 @@ import type {
   Run,
 } from "../../api/types";
 import { ErrorNotice, Loading } from "../../components";
-import { PlanEditor } from "./PlanEditor";
+import { PlanEditor, type PaperDecision } from "./PlanEditor";
 import { RoundNotes } from "./RoundNotes";
 import { pollingInterval, stageLabels, statusLabels } from "./status";
 
@@ -86,14 +87,27 @@ export function ResearchPage() {
       refresh();
     },
   });
+  const knownPapers = useQuery({
+    queryKey: ["papers", projectId, "confirm"],
+    queryFn: ({ signal }) =>
+      api<PaperPage>(`/projects/${projectId}/papers?limit=20`, { signal }),
+    enabled: !!projectId && run.data?.status === "waiting_user",
+  });
   const approve = useMutation({
-    mutationFn: (payload: { draft: PlanDraft; spec?: ResearchSpec }) =>
+    mutationFn: (payload: {
+      draft: PlanDraft;
+      spec?: ResearchSpec;
+      decisions?: PaperDecision[];
+    }) =>
       post<Run>(
         `/runs/${runId}/approve`,
         {
           expected_version: plan.data?.plan.version,
           plan: payload.draft,
           ...(payload.spec ? { spec: payload.spec } : {}),
+          ...(payload.decisions?.length
+            ? { paper_decisions: payload.decisions }
+            : {}),
         },
         approvalKey.current,
       ),
@@ -227,7 +241,13 @@ export function ResearchPage() {
           spec={plan.data.spec}
           busy={approve.isPending}
           error={approve.error ? errorText(approve.error) : undefined}
-          onApprove={(draft, spec) => approve.mutate({ draft, spec })}
+          knownPapers={(knownPapers.data?.items ?? []).map((paper) => ({
+            paper_id: paper.id,
+            title: paper.title,
+          }))}
+          onApprove={(draft, spec, decisions) =>
+            approve.mutate({ draft, spec, decisions })
+          }
         />
       )}
       {!active && (

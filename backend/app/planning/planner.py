@@ -1,21 +1,12 @@
 from app.agents.context import AgentContext
+from app.agents.coordinator import CoordinatorAgent
 from app.agents.prompts import prompt_messages
 from app.llm.base import CallContext
 from app.schemas.contracts import CoverageReport, PlanRequest, ResearchSpec, RoundPlan, SpecDraft
 
 
 async def draft_research_spec(request: PlanRequest, context: AgentContext) -> SpecDraft:
-    response = await context.model_gateway.generate(
-        SpecDraft,
-        prompt_messages(
-            "coordinator_spec.j2",
-            topic=request.topic,
-            scope_json=request.scope.model_dump_json(),
-        ),
-        "research",
-        CallContext(context.run_id, "planner:spec"),
-    )
-    return response.parsed
+    return await CoordinatorAgent().draft_spec(request, context)
 
 
 async def propose_round(

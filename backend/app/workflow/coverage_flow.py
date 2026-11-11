@@ -7,6 +7,7 @@ from langgraph.types import interrupt
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from app.config import Settings
 from app.db import Artifact, Claim, Evidence, Project, ProjectPaper, Run, Task
 from app.db import ResearchPlan as PlanRow
 from app.documents.reading_service import ReadingService
@@ -98,6 +99,22 @@ async def draft_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, ob
     return {"plan_id": str(plan.plan_id), "stage": "approve_plan", "round_index": 0}
 
 
+def freeze_snapshot_fields(settings: Settings, enabled_sources: list[str]) -> dict[str, object]:
+    """确认成功时写入两份快照的同一组字段。"""
+    return {
+        "planner_mode": settings.planner_mode,
+        "max_research_rounds": settings.max_research_rounds,
+        "max_actions_per_round": settings.max_actions_per_round,
+        "max_citation_neighbors": settings.max_citation_neighbors,
+        "max_search_in_paper_calls_per_paper": settings.max_search_in_paper_calls_per_paper,
+        "embedding_mode": settings.embedding_mode,
+        "enabled_sources": list(enabled_sources),
+        "max_source_requests": settings.max_source_requests,
+        "max_llm_calls": settings.max_llm_calls,
+        "max_deep_read_papers": settings.max_deep_read_papers,
+    }
+
+
 async def approve_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, object]:
     await nodes.enter("approve_plan")
     plan = await nodes.get_plan(state)
@@ -105,7 +122,7 @@ async def approve_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, 
     if not isinstance(approved, dict) or approved.get("approved") is not True:
         raise DomainError("PLAN_NOT_APPROVED", "需要有效的计划确认。")
     plan_id = UUID(str(approved.get("plan_id", state["plan_id"])))
-    async with nodes.factory() as session:
+    async with nodes.factory.begin() as session:
         run = await lock_owned(session, nodes.lease)
         row = await session.get(PlanRow, plan_id)
         if (
@@ -116,6 +133,10 @@ async def approve_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, 
             or run.plan_id != plan_id
         ):
             raise DomainError("PLAN_NOT_APPROVED", "提交的计划版本未由服务确认。")
+        spec = ResearchSpec.model_validate(row.spec_json)
+        frozen = freeze_snapshot_fields(nodes.context.settings, spec.scope.enabled_sources)
+        run.input_snapshot = {**run.input_snapshot, **frozen}
+        run.config_snapshot = {**run.config_snapshot, **frozen}
     return {"plan_id": str(plan_id), "stage": "begin_round", "round_index": 0, "stop_reason": ""}
 
 

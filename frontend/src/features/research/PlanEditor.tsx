@@ -10,22 +10,34 @@ const fields = [
   "limitation",
 ] as const;
 
+export type KnownPaper = { paper_id: string; title: string };
+export type PaperDecision = { paper_id: string; decision: "pin" | "exclude" };
+
 export function PlanEditor({
   plan,
   spec,
+  knownPapers = [],
   busy,
   error,
   onApprove,
 }: {
   plan: Plan;
   spec?: ResearchSpec | null;
+  knownPapers?: KnownPaper[];
   busy: boolean;
   error?: string;
-  onApprove: (draft: PlanDraft, spec?: ResearchSpec) => void;
+  onApprove: (
+    draft: PlanDraft,
+    spec?: ResearchSpec,
+    decisions?: PaperDecision[],
+  ) => void;
 }) {
   const [researchSpec, setResearchSpec] = useState<ResearchSpec | null>(
     spec ?? null,
   );
+  const [paperDecisions, setPaperDecisions] = useState<
+    Record<string, "pin" | "exclude">
+  >({});
   const [draft, setDraft] = useState<PlanDraft>({
     topic: plan.topic,
     questions: plan.questions,
@@ -137,6 +149,40 @@ export function PlanEditor({
         来源：{draft.scope.enabled_sources?.join("、")} ·{" "}
         {plan.assumptions?.join("；")}
       </p>
+      {knownPapers.length > 0 && (
+        <div>
+          <h3>确认前的已知论文</h3>
+          {knownPapers.map((paper) => (
+            <div className="question-row" key={paper.paper_id}>
+              <span>{paper.title}</span>
+              <button
+                className="quiet"
+                type="button"
+                onClick={() =>
+                  setPaperDecisions((current) => ({
+                    ...current,
+                    [paper.paper_id]: "pin",
+                  }))
+                }
+              >
+                钉住 {paper.title}
+              </button>
+              <button
+                className="quiet"
+                type="button"
+                onClick={() =>
+                  setPaperDecisions((current) => ({
+                    ...current,
+                    [paper.paper_id]: "exclude",
+                  }))
+                }
+              >
+                排除 {paper.title}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {error && (
         <div role="alert" className="notice error">
           {error}
@@ -155,7 +201,18 @@ export function PlanEditor({
                 researchSpec.columns.some((column) => !column.description_zh.trim())),
           )
         }
-        onClick={() => onApprove(draft, researchSpec ?? undefined)}
+        onClick={() =>
+          onApprove(
+            draft,
+            researchSpec ?? undefined,
+            knownPapers.flatMap((paper) => {
+              const decision = paperDecisions[paper.paper_id];
+              return decision
+                ? [{ paper_id: paper.paper_id, decision }]
+                : [];
+            }),
+          )
+        }
       >
         {busy
           ? "正在确认…"

@@ -3,7 +3,7 @@ from app.agents.prompts import json_text, prompt_messages
 from app.errors import DomainError
 from app.llm.base import CallContext
 from app.planning.spec import allowed_sources_for
-from app.schemas.contracts import PlanDraft, PlanRequest
+from app.schemas.contracts import PlanDraft, PlanRequest, SpecDraft
 
 
 class CoordinatorAgent:
@@ -41,3 +41,21 @@ class CoordinatorAgent:
                 "questions": questions,
             }
         )
+
+    async def draft_spec(self, request: PlanRequest, context: AgentContext) -> SpecDraft:
+        """起草研究规格。legacy 的 plan 路径保持不变。"""
+        context.check_cancelled()
+        allowed = allowed_sources_for(context.settings)
+        if not set(request.scope.enabled_sources) <= allowed:
+            raise DomainError("SOURCE_NOT_ENABLED", "计划请求了未启用的数据来源。")
+        response = await context.model_gateway.generate(
+            SpecDraft,
+            prompt_messages(
+                "coordinator_spec.j2",
+                topic=request.topic,
+                scope_json=json_text(request.scope.model_dump()),
+            ),
+            "research",
+            CallContext(context.run_id, "coordinator:spec"),
+        )
+        return response.parsed.model_copy(update={"topic": request.topic, "scope": request.scope})

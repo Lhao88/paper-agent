@@ -407,6 +407,7 @@ export interface components {
             expected_version: number;
             plan?: components["schemas"]["PlanDraft"] | null;
             spec?: components["schemas"]["ResearchSpec"] | null;
+            paper_decisions?: { paper_id: string; decision: "pin" | "exclude" }[];
         };
         /** Body_upload_api_projects__project_id__documents_post */
         Body_upload_api_projects__project_id__documents_post: {

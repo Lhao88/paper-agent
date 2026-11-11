@@ -57,17 +57,17 @@ description: "Task list for the coverage research loop"
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] 在 `backend/tests/unit/test_spec.py` 覆盖未知来源 `cnki` 被拒绝、悬空列被拒绝，以及问题、列和规则编号由程序重写
-- [ ] T008 [P] [US1] 在 `backend/tests/integration/test_spec_storage.py` 覆盖 `spec_json` 为空的 legacy 计划仍可读取，且过期 `expected_version` 确认被拒绝
-- [ ] T009 [P] [US1] 在 `frontend/src/features/research/PlanEditor.test.tsx` 覆盖确认前可增删规则和抽取列、显示覆盖目标，并可钉住或排除已知论文。这是确认规格前的操作，不是下一次运行才看见的文献库
+- [X] T007 [P] [US1] 在 `backend/tests/unit/test_spec.py` 覆盖未知来源 `cnki` 被拒绝、悬空列被拒绝，以及问题、列和规则编号由程序重写
+- [X] T008 [P] [US1] 在 `backend/tests/integration/test_spec_storage.py` 覆盖 `spec_json` 为空的 legacy 计划仍可读取，且过期 `expected_version` 确认被拒绝
+- [X] T009 [P] [US1] 在 `frontend/src/features/research/PlanEditor.test.tsx` 覆盖确认前可增删规则和抽取列、显示覆盖目标，并可钉住或排除已知论文。这是确认规格前的操作，不是下一次运行才看见的文献库
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] 在 `backend/app/planning/spec.py` 把草稿规范成研究规格，范围以用户请求为准，来源只接受 `openalex`、`arxiv`、`semantic_scholar`
-- [ ] T011 [US1] 通过 `backend/prompts/coordinator_spec.j2` 和 `backend/app/agents/coordinator.py` 起草规格，现有 `plan` 路径继续留给 legacy
-- [ ] T012 [US1] 在 `backend/app/workflow/coverage_flow.py` 的 `approve_spec` 成功时，把同一组冻结字段同时写入该 run 的 `input_snapshot` 和 `config_snapshot`：`planner_mode`、`max_research_rounds`、`max_actions_per_round`、`max_citation_neighbors`、`max_search_in_paper_calls_per_paper`、`embedding_mode`、`enabled_sources`，以及当时的来源请求上限、模型调用上限和精读篇数上限
-- [ ] T013 [US1] 在 `backend/app/services/research.py`、`backend/app/api/router.py` 和 `backend/app/schemas/api.py` 保持 `expected_version` 为计划版本，并返回规格、规则、抽取列和覆盖目标
-- [ ] T014 [US1] 在 `frontend/src/features/research/PlanEditor.tsx` 允许确认前增删纳入和排除规则、增删抽取列、显示覆盖目标，并钉住或排除已知论文。这是确认规格前的操作，不是 T037 里下一次运行才看见的文献库
+- [X] T010 [US1] 在 `backend/app/planning/spec.py` 把草稿规范成研究规格，范围以用户请求为准，来源只接受 `openalex`、`arxiv`、`semantic_scholar`
+- [X] T011 [US1] 通过 `backend/prompts/coordinator_spec.j2` 和 `backend/app/agents/coordinator.py` 起草规格，现有 `plan` 路径继续留给 legacy
+- [X] T012 [US1] 在 `backend/app/workflow/coverage_flow.py` 的 `approve_spec` 成功时，把同一组冻结字段同时写入该 run 的 `input_snapshot` 和 `config_snapshot`：`planner_mode`、`max_research_rounds`、`max_actions_per_round`、`max_citation_neighbors`、`max_search_in_paper_calls_per_paper`、`embedding_mode`、`enabled_sources`，以及当时的来源请求上限、模型调用上限和精读篇数上限
+- [X] T013 [US1] 在 `backend/app/services/research.py`、`backend/app/api/router.py` 和 `backend/app/schemas/api.py` 保持 `expected_version` 为计划版本，并返回规格、规则、抽取列和覆盖目标
+- [X] T014 [US1] 在 `frontend/src/features/research/PlanEditor.tsx` 允许确认前增删纳入和排除规则、增删抽取列、显示覆盖目标，并钉住或排除已知论文。这是确认规格前的操作，不是 T037 里下一次运行才看见的文献库
 
 **Checkpoint**: 用户故事 1 可以单独演示。确认前没有检索
 

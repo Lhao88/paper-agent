@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Artifact, ModelCall, Project, Run, RunEvent, Task
+from app.db import Artifact, ModelCall, Project, ProjectPaper, Run, RunEvent, Task
 from app.db import ResearchPlan as PlanRow
 from app.errors import DomainError
 from app.planning.spec import allowed_sources_for
@@ -29,10 +30,16 @@ class StartResearch(StrictModel):
     budgets: dict[str, int] = Field(default_factory=dict)
 
 
+class PaperDecision(StrictModel):
+    paper_id: UUID
+    decision: Literal["pin", "exclude"]
+
+
 class ApprovePlan(StrictModel):
     expected_version: int = Field(ge=1)
     plan: PlanDraft | None = None
     spec: ResearchSpec | None = None
+    paper_decisions: list[PaperDecision] = Field(default_factory=list)
 
 
 async def start_research(
@@ -274,6 +281,17 @@ async def approve_plan(
             )
         if row is None:
             raise DomainError("PLAN_NOT_FOUND", "计划不存在。")
+        for decision in request.paper_decisions:
+            member = await session.scalar(
+                select(ProjectPaper).where(
+                    ProjectPaper.project_id == run.project_id,
+                    ProjectPaper.paper_id == decision.paper_id,
+                )
+            )
+            if member is None:
+                raise DomainError("PAPER_NOT_FOUND", "只能钉住或排除本项目已有论文。")
+            member.user_decision = decision.decision
+            member.version += 1
         row.confirmed_at = datetime.now(UTC)
         run.plan_id, run.status, run.available_at = row.id, "queued", datetime.now(UTC)
         run.input_snapshot = {
