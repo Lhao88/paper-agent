@@ -63,6 +63,38 @@ def test_mcp_allowlists_are_parsed_as_json_arrays(monkeypatch: pytest.MonkeyPatc
     assert settings.mcp_allowed_hosts == ["localhost:8000"]
 
 
+def test_coverage_defaults_stay_legacy_and_within_phase2_bounds() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.planner_mode == "legacy"
+    assert settings.max_research_rounds == 4
+    assert settings.max_actions_per_round == 6
+    assert settings.max_citation_neighbors == 15
+    assert settings.max_search_in_paper_calls_per_paper == 3
+    assert settings.embedding_mode == "mock"
+    assert settings.embedding_dimensions == 256
+    assert settings.enable_semantic_scholar is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("max_research_rounds", 0),
+        ("max_research_rounds", 9),
+        ("max_actions_per_round", 0),
+        ("max_actions_per_round", 7),
+        ("max_citation_neighbors", 0),
+        ("max_citation_neighbors", 31),
+        ("max_search_in_paper_calls_per_paper", 0),
+        ("max_search_in_paper_calls_per_paper", 7),
+        ("embedding_dimensions", 31),
+        ("embedding_dimensions", 3073),
+    ],
+)
+def test_coverage_settings_reject_values_outside_phase2_bounds(field: str, value: int) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **{field: value})
+
+
 def test_live_mode_accepts_complete_provider_configuration() -> None:
     settings = Settings(
         _env_file=None,

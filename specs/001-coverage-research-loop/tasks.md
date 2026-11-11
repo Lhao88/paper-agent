@@ -40,10 +40,10 @@ description: "Task list for the coverage research loop"
 
 **⚠️ CRITICAL**: 完成本阶段之前，不开始任何用户故事
 
-- [ ] T003 在 `backend/app/schemas/contracts.py` 对齐共享类型并保留 `PlanDraft` 与 `FollowupDecision`：`extra=forbid`；`ResearchSpec.questions` 最少 3 最多 5；规则最少 1 最多 12；抽取列最少 1 最多 12；列字段只允许 `method`、`dataset`、`experimental_setup`、`metric`、`result`、`limitation`；`description_zh` 与规则 `text_zh` 长度 1 到 300；覆盖目标 `min_included_papers` 默认 3、最小 1、最大 15；`RoundAction.kind` 只允许 `search_works`、`expand_citations`、`read_fulltext`、`search_in_paper`、`stop`；`RoundPlan.actions` 最少 1 最多 6；主张极性只允许 `support`、`contradict`
-- [ ] T004 [P] 在 `backend/app/config.py` 保持 `planner_mode=legacy`、`max_research_rounds` 默认 4 且范围 1 到 8、`max_actions_per_round` 默认 6 且范围 1 到 6、`max_citation_neighbors` 默认 15 且范围 1 到 30、`max_search_in_paper_calls_per_paper` 默认 3 且范围 1 到 6、`embedding_mode=mock`、`embedding_dimensions` 默认 256 且范围 32 到 3072、`enable_semantic_scholar=false`
-- [ ] T005 [P] 在 `backend/migrations/versions/` 新增只建 `text_embeddings` 的迁移，向量列为 PostgreSQL `REAL[]`，不创建 pgvector 扩展，不改已有行的含义
-- [ ] T006 在 `backend/app/worker/execute.py` 选图只读取该 run 已经冻结的 `planner_mode`：`coverage` 用 `build_coverage_graph`，`legacy` 用 `build_graph`。不读取后来的进程配置
+- [X] T003 在 `backend/app/schemas/contracts.py` 对齐共享类型并保留 `PlanDraft` 与 `FollowupDecision`：`extra=forbid`；`ResearchSpec.questions` 最少 3 最多 5；规则最少 1 最多 12；抽取列最少 1 最多 12；列字段只允许 `method`、`dataset`、`experimental_setup`、`metric`、`result`、`limitation`；`description_zh` 与规则 `text_zh` 长度 1 到 300；覆盖目标 `min_included_papers` 默认 3、最小 1、最大 15；`RoundAction.kind` 只允许 `search_works`、`expand_citations`、`read_fulltext`、`search_in_paper`、`stop`；`RoundPlan.actions` 最少 1 最多 6；主张极性只允许 `support`、`contradict`
+- [X] T004 [P] 在 `backend/app/config.py` 保持 `planner_mode=legacy`、`max_research_rounds` 默认 4 且范围 1 到 8、`max_actions_per_round` 默认 6 且范围 1 到 6、`max_citation_neighbors` 默认 15 且范围 1 到 30、`max_search_in_paper_calls_per_paper` 默认 3 且范围 1 到 6、`embedding_mode=mock`、`embedding_dimensions` 默认 256 且范围 32 到 3072、`enable_semantic_scholar=false`
+- [X] T005 [P] 在 `backend/migrations/versions/` 新增只建 `text_embeddings` 的迁移，向量列为 PostgreSQL `REAL[]`，不创建 pgvector 扩展，不改已有行的含义
+- [X] T006 在 `backend/app/worker/execute.py` 选图只读取该 run 已经冻结的 `planner_mode`：`coverage` 用 `build_coverage_graph`，`legacy` 用 `build_graph`。不读取后来的进程配置
 
 **Checkpoint**: 契约、默认配置、向量表和选图规则已固定
 

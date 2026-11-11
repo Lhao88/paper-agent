@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import suppress
 from time import monotonic
+from typing import Literal
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -21,6 +22,36 @@ from app.worker.fencing import fenced_factory
 from app.workflow.graph import build_coverage_graph, build_graph
 from app.workflow.nodes import WorkflowNodes
 from app.workflow.state import ResearchState, initial_state
+
+PlannerMode = Literal["legacy", "coverage"]
+
+
+def frozen_planner_mode(
+    input_snapshot: dict[str, object],
+    config_snapshot: dict[str, object],
+) -> PlannerMode:
+    """选图只认该 run 快照里的 planner_mode，不读取后来的进程配置。
+
+    两份快照都写入同一个模式时使用该模式。只写在其中一份时使用那份冻结值。
+    两份不一致或都没有时回到开发默认 legacy。
+    """
+    input_mode = input_snapshot.get("planner_mode")
+    config_mode = config_snapshot.get("planner_mode")
+
+    def known(value: object) -> PlannerMode | None:
+        if value == "coverage" or value == "legacy":
+            return value
+        return None
+
+    frozen_input = known(input_mode)
+    frozen_config = known(config_mode)
+    if frozen_input is not None and frozen_input == frozen_config:
+        return frozen_input
+    if frozen_input is not None and frozen_config is None:
+        return frozen_input
+    if frozen_config is not None and frozen_input is None:
+        return frozen_config
+    return "legacy"
 
 
 async def execute_run(
@@ -73,6 +104,8 @@ async def execute_run(
     )
     if frozen.research_strategy == "B0":
         frozen = frozen.model_copy(update={"read_concurrency": 1})
+    mode = frozen_planner_mode(inputs, snapshot)
+    frozen = frozen.model_copy(update={"planner_mode": mode})
     business_factory = fenced_factory(engine, lease)
     budget = BudgetService(business_factory)
     transport = (
@@ -90,9 +123,7 @@ async def execute_run(
     )
     nodes = WorkflowNodes(context, factory, lease)
     graph = (
-        build_coverage_graph(nodes, saver)
-        if frozen.planner_mode == "coverage"
-        else build_graph(nodes, saver)
+        build_coverage_graph(nodes, saver) if mode == "coverage" else build_graph(nodes, saver)
     )
     config: RunnableConfig = {"configurable": {"thread_id": str(lease.run_id)}}
     checkpoint = await saver.aget_tuple(config)

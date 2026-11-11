@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import REAL, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Created, Identified
@@ -49,6 +49,29 @@ class PaperNeighbor(Created, Base):
     to_paper_id: Mapped[UUID] = mapped_column(ForeignKey("papers.id"), primary_key=True)
     direction: Mapped[str] = mapped_column(String(20), primary_key=True)
     provider: Mapped[str] = mapped_column(String(40), primary_key=True)
+
+
+class TextEmbedding(Identified, Created, Base):
+    """摘要或分块向量。只存 PostgreSQL REAL[]，不使用 pgvector。"""
+
+    __tablename__ = "text_embeddings"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id",
+            "owner_type",
+            "owner_id",
+            "model_id",
+            name="text_embedding_identity",
+        ),
+        CheckConstraint("owner_type IN ('abstract', 'chunk')", name="owner_type"),
+    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), index=True)
+    owner_type: Mapped[str] = mapped_column(String(20))
+    owner_id: Mapped[UUID]
+    paper_id: Mapped[UUID] = mapped_column(ForeignKey("papers.id"), index=True)
+    dimensions: Mapped[int]
+    vector: Mapped[list[float]] = mapped_column(ARRAY(REAL()))
+    model_id: Mapped[str] = mapped_column(String(200))
 
 
 class Document(Identified, Created, Base):
