@@ -114,6 +114,38 @@ def test_second_saturated_round_increments_consecutive_count() -> None:
     assert resumed.consecutive_saturated_rounds == 0
 
 
+def test_saturation_needs_no_new_relevant_papers_and_no_new_required_cells() -> None:
+    paper_id = uuid4()
+    evidence_id = uuid4()
+    opened = compile_coverage(
+        spec(minimum=1),
+        [claim(paper_id, evidence_id)],
+        round_index=1,
+        new_relevant_papers=0,
+        previously_filled_required_cells=set(),
+    )
+    assert opened.saturated is False
+    settled = compile_coverage(
+        spec(minimum=1),
+        [claim(paper_id, evidence_id)],
+        round_index=2,
+        new_relevant_papers=0,
+        previously_filled_required_cells={("q1", "c1")},
+    )
+    assert settled.saturated is True
+    assert settled.new_relevant_papers_last_round == 0
+
+
+def test_coverage_uses_only_the_ledger_and_does_not_take_a_model() -> None:
+    import inspect
+
+    parameters = inspect.signature(compile_coverage).parameters
+    assert "model" not in parameters
+    assert "gateway" not in parameters
+    report = compile_coverage(spec(), [], round_index=0, new_relevant_papers=0)
+    assert report.unmet_question_ids == ["q1", "q2"]
+
+
 def test_chinese_scope_without_fulltext_is_disclosed() -> None:
     missing = compile_coverage(
         spec(languages=["zh"]),

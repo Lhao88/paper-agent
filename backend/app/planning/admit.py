@@ -11,6 +11,9 @@ class PaperAdmission(StrictModel):
     status: Literal["active", "pinned", "excluded"]
     relevance: int | None = None
     has_document: bool = False
+    included: bool = False
+    selected_this_round: bool = False
+    abstract_missing: bool = False
     search_in_paper_calls: int = 0
     empty_required_column_ids: list[str] = Field(default_factory=list)
 
@@ -154,6 +157,11 @@ def _read_reason(action: RoundAction, library: dict[UUID, PaperAdmission]) -> st
             return "paper_not_in_library"
         if paper.status == "excluded":
             return "paper_excluded"
+        # 全文只能下载已纳入或本轮选中的论文。没有摘要本身不是不相关。
+        if not paper.included and not paper.selected_this_round:
+            return "not_included_or_selected"
+        if paper.abstract_missing and paper.relevance is None:
+            return None
         if paper.status != "pinned" and (paper.relevance is None or paper.relevance < 3):
             return "relevance_too_low"
     return None

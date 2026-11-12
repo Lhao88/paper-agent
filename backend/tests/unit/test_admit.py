@@ -187,8 +187,8 @@ def test_expand_citations_requires_library_direction_and_neighbor_cap() -> None:
 
 
 def test_read_fulltext_rejects_unpinned_low_relevance() -> None:
-    low = paper(relevance=2, status="active")
-    pinned = paper(relevance=2, status="pinned")
+    low = paper(relevance=2, status="active", included=True)
+    pinned = paper(relevance=2, status="pinned", included=True)
     result = admit_actions(
         research_spec(),
         [
@@ -216,6 +216,66 @@ def test_read_fulltext_rejects_unpinned_low_relevance() -> None:
     assert [item.action_id for item in result.actions] == ["pinned"]
     assert result.rejected[0].action_id == "low"
     assert result.rejected[0].reason == "relevance_too_low"
+
+
+def test_fulltext_download_requires_inclusion_and_missing_abstract_is_not_irrelevant() -> None:
+    """全文只能下载已纳入或本轮选中的论文；没有摘要不得当成不相关。"""
+    untouched = paper(relevance=4, included=False, selected_this_round=False)
+    included = paper(relevance=4, included=True, abstract_missing=False)
+    selected = paper(relevance=4, selected_this_round=True)
+    no_abstract = paper(
+        relevance=None,
+        included=True,
+        abstract_missing=True,
+        status="active",
+    )
+    result = admit_actions(
+        research_spec(),
+        [
+            action(
+                "read_fulltext",
+                action_id="not-selected",
+                paper_ids=[untouched.paper_id],
+                providers=[],
+                query=None,
+            ),
+            action(
+                "read_fulltext",
+                action_id="included",
+                paper_ids=[included.paper_id],
+                providers=[],
+                query=None,
+            ),
+            action(
+                "read_fulltext",
+                action_id="selected",
+                paper_ids=[selected.paper_id],
+                providers=[],
+                query=None,
+            ),
+            action(
+                "read_fulltext",
+                action_id="no-abstract",
+                paper_ids=[no_abstract.paper_id],
+                providers=[],
+                query=None,
+            ),
+        ],
+        coverage(unmet_question_ids=[]),
+        [untouched, included, selected, no_abstract],
+        remaining_source_requests=5,
+        remaining_llm_calls=5,
+        remaining_deep_reads=5,
+    )
+    admitted = {item.action_id for item in result.actions}
+    reasons = {item.action_id: item.reason for item in result.rejected}
+    assert "included" in admitted
+    assert "selected" in admitted
+    assert "no-abstract" in admitted
+    assert reasons["not-selected"] == "not_included_or_selected"
+    assert "no-abstract" not in reasons
+    assert "irrelevant" not in reasons.values()
+    assert "missing_abstract" not in reasons.values()
 
 
 def test_search_in_paper_requires_document_empty_column_and_call_room() -> None:
