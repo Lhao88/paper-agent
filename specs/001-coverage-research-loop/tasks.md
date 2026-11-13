@@ -83,8 +83,8 @@ description: "Task list for the coverage research loop"
 
 - [X] T015 [P] [US2] 在 `backend/tests/unit/test_coverage.py` 覆盖空账本的未满足子问题、相关性不少于 3 的新论文为 0 且没有新必填单元格时的饱和，以及语言含 `zh` 且无中文全文源时写入 `zh_fulltext_not_licensed`
 - [X] T016 [P] [US2] 在 `backend/tests/unit/test_admit.py` 覆盖八条准入规则，包括必填目标未满足且预算足够时拒绝单独 `stop` 并补出缺口检索。断言写明：全文只能下载已纳入或本轮选中的论文；没有摘要不得当成不相关
-- [ ] T017 [P] [US2] 在 `backend/tests/unit/test_index.py` 覆盖同一文本的 mock 哈希稳定，以及 `embedding_mode=off` 时排序与现有关键词相关度一致
-- [ ] T018 [P] [US2] 在 `backend/tests/unit/test_semantic_scholar.py` 用 httpx 替身验证检索和一跳，并断言 PDF 地址不由该适配器下载
+- [X] T017 [P] [US2] 在 `backend/tests/unit/test_index.py` 覆盖同一文本的 mock 哈希稳定，以及 `embedding_mode=off` 时排序与现有关键词相关度一致
+- [X] T018 [P] [US2] 在 `backend/tests/unit/test_semantic_scholar.py` 用 httpx 替身验证检索和一跳，并断言 PDF 地址不由该适配器下载
 
 ### Implementation for User Story 2
 
@@ -92,8 +92,8 @@ description: "Task list for the coverage research loop"
 - [X] T020 [US2] 在 `backend/app/planning/admit.py` 用纯函数丢弃超预算、未知论文、未启用来源和越权精读，每轮最多保留 `max_actions_per_round`，默认 6 个。准入规则写明：全文只能下载已纳入或本轮选中的论文；没有摘要不得当成不相关
 - [ ] T021 [US2] 在 `backend/app/planning/planner.py` 和 `backend/prompts/planner_round.j2` 只依据规格、最近两页笔记和覆盖表解析最多 6 个 `RoundAction`
 - [ ] T022 [US2] 在 `backend/app/tools/runtime.py` 只执行 T020 已经准入的结果，再调用 `backend/app/tools/search_works.py`、`backend/app/tools/citations.py` 和 `backend/app/tools/search_in_paper.py`，并把来源请求和模型调用记入现有预算账本
-- [ ] T023 [US2] 在 `backend/app/sources/semantic_scholar.py` 保持检索与一跳引文，PDF 下载继续交给现有文档服务
-- [ ] T024 [US2] 在 `backend/app/memory/index.py` 读取 PostgreSQL `REAL[]`，在进程内计算余弦，默认使用 mock 哈希
+- [X] T023 [US2] 在 `backend/app/sources/semantic_scholar.py` 保持检索与一跳引文，PDF 下载继续交给现有文档服务
+- [X] T024 [US2] 在 `backend/app/memory/index.py` 读取 PostgreSQL `REAL[]`，在进程内计算余弦，默认使用 mock 哈希
 - [ ] T025 [US2] 在 `backend/app/memory/notebook.py` 每轮追加一页笔记，记录已执行动作、被拒绝动作、未满足问题和排序方式
 - [ ] T026 [US2] 在 `backend/app/workflow/graph.py` 与 `backend/app/workflow/coverage_flow.py` 实现确认后的多轮循环；四者任一即进入现有 `write`、`validate`、`finalize`：必填列已满足且本轮没有新的高相关论文、连续两轮饱和、预算不足、达到该 run 冻结的 `max_research_rounds`
 - [ ] T027 [P] [US2] 在 `frontend/src/features/research/ResearchPage.tsx` 按轮次显示已执行动作、被拒绝动作和未满足问题

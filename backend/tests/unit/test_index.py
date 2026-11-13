@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from app.memory.index import mock_embedding, rank_chunks
+from app.memory.index import in_process_cosine, mock_embedding, rank_chunks, read_real_array
 from app.planning.admit import admit_actions
 from app.schemas.contracts import ChunkRecord, ExtractionCandidate, ExtractionOutput
 from app.screening.text import bm25_scores
@@ -50,6 +50,26 @@ def test_chinese_query_ranks_the_matching_chunk_first() -> None:
     other = chunk("本段只报告实验设置。")
     ranked = rank_chunks([other, matched], "图神经网络", "off")
     assert ranked[0].chunk_id == matched.chunk_id
+
+
+def test_real_array_cosine_is_computed_in_process_and_mock_hash_is_default() -> None:
+    lexical = chunk("alpha beta gamma")
+    semantic = chunk("delta epsilon zeta")
+    stored = {
+        lexical.chunk_id: (1.0, 0.0),
+        semantic.chunk_id: (0.0, 1.0),
+    }
+    query = read_real_array((0.0, 1.0))
+    ranked = rank_chunks(
+        [lexical, semantic],
+        "unrelated query",
+        "mock",
+        vectors=stored,
+        query_vector=query,
+    )
+    assert ranked[0].chunk_id == semantic.chunk_id
+    assert in_process_cosine(read_real_array((1.0, 0.0)), query) == 0.0
+    assert mock_embedding("同一段文字") == mock_embedding("同一段文字")
 
 
 def test_hand_built_vectors_rank_the_closer_chunk_first() -> None:

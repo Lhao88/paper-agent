@@ -74,6 +74,21 @@ async def test_citation_response_keeps_fifteen_and_reports_cap() -> None:
 
 
 @respx.mock
+async def test_cited_by_hop_stays_on_the_api_and_does_not_download_pdf() -> None:
+    pdf = respx.get("https://pdf.example/paper.pdf").mock(return_value=httpx.Response(200))
+    route = respx.get("https://scholar.example/graph/v1/paper/seed/citations").mock(
+        return_value=httpx.Response(200, json={"data": [{"citingPaper": paper_payload(2)}]})
+    )
+    async with httpx.AsyncClient() as client:
+        page = await SemanticScholarSource(client, settings()).neighbors("seed", "cited_by", 15)
+    assert route.called is True
+    assert route.calls[0].request.url.host == "scholar.example"
+    assert pdf.called is False
+    assert page.records[0].sources[0].pdf_url == "https://pdf.example/paper.pdf"
+    assert not hasattr(SemanticScholarSource, "download_pdf")
+
+
+@respx.mock
 async def test_rate_limit_is_not_an_empty_result() -> None:
     respx.get("https://scholar.example/graph/v1/paper/search").mock(
         return_value=httpx.Response(429, headers={"Retry-After": "2"})

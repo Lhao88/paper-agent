@@ -1,6 +1,7 @@
 import hashlib
 import math
 import re
+from collections.abc import Mapping, Sequence
 from typing import Literal
 from uuid import UUID
 
@@ -30,12 +31,23 @@ def mock_embedding(text: str, dimensions: int = 256) -> list[float]:
     return _normalize(vector)
 
 
+def read_real_array(value: Sequence[float] | None) -> list[float]:
+    """把 PostgreSQL REAL[] 读成进程内浮点列表，不在数据库里算距离。"""
+    if value is None:
+        return []
+    return [float(item) for item in value]
+
+
+def in_process_cosine(left: Sequence[float], right: Sequence[float]) -> float:
+    return _cosine(read_real_array(left), read_real_array(right))
+
+
 def rank_chunks(
     chunks: list[ChunkRecord],
     query: str,
     mode: EmbeddingMode,
-    vectors: dict[UUID, list[float]] | None = None,
-    query_vector: list[float] | None = None,
+    vectors: Mapping[UUID, Sequence[float]] | None = None,
+    query_vector: Sequence[float] | None = None,
 ) -> list[ChunkRecord]:
     if not chunks:
         return []
@@ -48,14 +60,17 @@ def rank_chunks(
         return [chunk for _, chunk in ordered]
     peak = max(lexical) if lexical else 0.0
     normalized = [score / peak if peak else 0.0 for score in lexical]
-    probe = query_vector if query_vector is not None else mock_embedding(query)
+    probe = read_real_array(query_vector) if query_vector is not None else mock_embedding(query)
     provided = vectors or {}
     scored: list[tuple[float, ChunkRecord]] = []
     for score, chunk in zip(normalized, chunks, strict=True):
-        vector = provided.get(chunk.chunk_id)
-        if vector is None:
-            vector = mock_embedding(chunk.text, dimensions=len(probe) or 256)
-        hybrid = 0.65 * score + 0.35 * _cosine(probe, vector)
+        stored = provided.get(chunk.chunk_id)
+        vector = (
+            mock_embedding(chunk.text, dimensions=len(probe) or 256)
+            if stored is None
+            else read_real_array(stored)
+        )
+        hybrid = 0.65 * score + 0.35 * in_process_cosine(probe, vector)
         scored.append((hybrid, chunk))
     scored.sort(key=lambda item: (-item[0], str(item[1].chunk_id)))
     return [chunk for _, chunk in scored]
