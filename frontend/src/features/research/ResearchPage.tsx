@@ -230,7 +230,9 @@ export function ResearchPage() {
       )}
       {!!notes.data?.pages.length && (
         <RoundNotes
-          pages={notes.data.pages}
+          pages={[...notes.data.pages].sort(
+            (left, right) => left.round_index - right.round_index,
+          )}
           unmet={notes.data.unmet_question_ids ?? []}
         />
       )}
