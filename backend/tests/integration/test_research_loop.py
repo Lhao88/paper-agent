@@ -149,6 +149,84 @@ async def test_coverage_loop_replans_records_claims_and_skips_replay():
         await engine.dispose()
 
 
+async def test_confirmation_precedes_retrieval_and_the_second_query_follows_the_gap():
+    settings = get_test_settings().model_copy(
+        update={"planner_mode": "coverage", "max_research_rounds": 2}
+    )
+    engine = create_engine(settings)
+    factory = session_factory(engine)
+    services = Services(settings, factory)
+    try:
+        project = await create_project(services, "确认前不检索", "图神经网络文献")
+        project_id = UUID(str(project["id"]))
+        response = await start_research(services, project_id, StartResearch(), "gap-run")
+        run_id = UUID(str(response["id"]))
+        async with AsyncPostgresSaver.from_conn_string(settings.checkpoint_dsn) as saver:
+            lease = await claim_next_run(factory, "coverage-worker", run_id)
+            assert lease
+            status = await execute_run(engine, factory, settings, saver, lease)
+        assert status == "waiting_user", await get_status(services, run_id)
+        async with factory() as session:
+            run = await session.get(Run, run_id)
+            assert run is not None
+            assert run.used_source_requests == 0
+            searches = await session.scalar(
+                select(func.count())
+                .select_from(Task)
+                .where(Task.run_id == run_id, Task.operation == "source_search")
+            )
+            retrievals = await session.scalar(
+                select(func.count())
+                .select_from(Artifact)
+                .where(
+                    Artifact.run_id == run_id,
+                    Artifact.operation_key.startswith("coverage-round:"),
+                )
+            )
+        assert searches == 0
+        assert retrievals == 0
+        async with AsyncPostgresSaver.from_conn_string(settings.checkpoint_dsn) as saver:
+            await _resume(engine, factory, settings, services, saver, run_id)
+        async with factory() as session:
+            tasks = list(
+                await session.scalars(
+                    select(Task)
+                    .where(Task.run_id == run_id, Task.operation == "source_search")
+                    .order_by(Task.created_at, Task.id)
+                )
+            )
+            coverage = await session.scalar(
+                select(Artifact).where(
+                    Artifact.run_id == run_id,
+                    Artifact.operation_key == f"coverage:{run_id}:1",
+                )
+            )
+        assert coverage is not None
+        spec = ResearchSpec.model_validate((await _plan_spec(factory, run_id)).spec_json)
+        report = CoverageReport.model_validate(coverage.payload_json)
+        first = tasks[0].input_json["query"]
+        second = tasks[1].input_json["query"]
+        assert first["terms"] != second["terms"]
+        gap_question = next(
+            question_id
+            for question_id in second["question_ids"]
+            if question_id in report.unmet_question_ids
+        )
+        gap_column = next(
+            column
+            for column in spec.columns
+            if column.question_id == gap_question and column.required
+        )
+        assert gap_column.description_zh in second["terms"]
+        assert gap_column.description_zh not in first["terms"]
+        assert any(
+            cell.column_id == gap_column.column_id and cell.filled_papers == 0
+            for cell in report.cells
+        )
+    finally:
+        await engine.dispose()
+
+
 async def _plan_spec(factory, run_id: UUID):
     from app.db import ResearchPlan as PlanRow
 
@@ -162,6 +240,10 @@ async def _complete(engine, factory, settings, services, saver, run_id: UUID) ->
     assert lease
     status = await execute_run(engine, factory, settings, saver, lease)
     assert status == "waiting_user", await get_status(services, run_id)
+    await _resume(engine, factory, settings, services, saver, run_id)
+
+
+async def _resume(engine, factory, settings, services, saver, run_id: UUID) -> None:
     planned = await get_plan(services, run_id)
     plan = ResearchPlan.model_validate(planned["plan"])
     await approve_plan(
