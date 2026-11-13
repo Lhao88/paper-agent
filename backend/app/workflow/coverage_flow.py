@@ -99,6 +99,56 @@ async def draft_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, ob
     return {"plan_id": str(plan.plan_id), "stage": "approve_plan", "round_index": 0}
 
 
+def frozen_research_rounds(
+    input_snapshot: dict[str, object],
+    config_snapshot: dict[str, object],
+) -> int:
+    """轮次上限只认该 run 快照。两份一致或只有一份时使用冻结值，矛盾时用默认 4。"""
+    left = _round_limit(input_snapshot.get("max_research_rounds"))
+    right = _round_limit(config_snapshot.get("max_research_rounds"))
+    if left is not None and left == right:
+        return left
+    if left is not None and right is None:
+        return left
+    if right is not None and left is None:
+        return right
+    return 4
+
+
+def _round_limit(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if 1 <= value <= 8:
+        return value
+    return None
+
+
+def coverage_stop_reason(
+    *,
+    existing: str,
+    round_index: int,
+    unmet_question_ids: list[str],
+    new_relevant_papers: int,
+    consecutive_saturated_rounds: int,
+    remaining_source_requests: int,
+    remaining_llm_calls: int,
+    frozen_max_rounds: int,
+    time_exhausted: bool = False,
+) -> str:
+    """四个停止条件任一成立即结束循环。必填已满足但仍有新的高相关论文时，不因此停止。"""
+    if existing:
+        return existing
+    if not unmet_question_ids and new_relevant_papers == 0:
+        return "requirements_met"
+    if consecutive_saturated_rounds >= 2:
+        return "saturated"
+    if time_exhausted or (remaining_source_requests < 1 and remaining_llm_calls < 1):
+        return "budget_exhausted"
+    if round_index + 1 >= frozen_max_rounds:
+        return "rounds"
+    return ""
+
+
 def freeze_snapshot_fields(settings: Settings, enabled_sources: list[str]) -> dict[str, object]:
     """确认成功时写入两份快照的同一组字段。"""
     return {
@@ -330,16 +380,73 @@ async def note(nodes: WorkflowNodes, state: ResearchState) -> dict[str, object]:
     notebooks = state["notebook_ids"]
     if identifier not in notebooks:
         notebooks = [*notebooks, identifier]
-    index = state["round_index"] + 1
-    stop = state["stop_reason"]
-    if not stop and index >= nodes.context.settings.max_research_rounds:
-        stop = "rounds"
+    fresh = await _fresh_coverage(nodes, state, await _new_relevant(nodes, state))
+    stop = coverage_stop_reason(
+        existing=state["stop_reason"],
+        round_index=state["round_index"],
+        unmet_question_ids=list(fresh.unmet_question_ids),
+        new_relevant_papers=fresh.new_relevant_papers_last_round,
+        consecutive_saturated_rounds=fresh.consecutive_saturated_rounds,
+        remaining_source_requests=fresh.remaining_source_requests,
+        remaining_llm_calls=fresh.remaining_llm_calls,
+        frozen_max_rounds=await _frozen_rounds(nodes),
+        time_exhausted=await _time_exhausted(nodes),
+    )
     return {
         "notebook_ids": notebooks,
-        "round_index": index,
+        "round_index": state["round_index"] + 1,
         "stop_reason": stop,
         "stage": "write" if stop else "begin_round",
     }
+
+
+async def _fresh_coverage(
+    nodes: WorkflowNodes, state: ResearchState, new_relevant: int
+) -> CoverageReport:
+    plan = await nodes.get_plan(state)
+    spec = await _spec(nodes, plan.plan_id)
+    previous, consecutive, _previous_relevant = await _coverage_history(nodes, state["round_index"])
+    remaining = await _remaining(nodes, plan.project_id)
+    return compile_coverage(
+        spec,
+        await _claims(nodes, plan.project_id),
+        round_index=state["round_index"],
+        new_relevant_papers=new_relevant,
+        previously_filled_required_cells=previous,
+        consecutive_saturated_rounds=consecutive,
+        remaining_source_requests=remaining[0],
+        remaining_llm_calls=remaining[1],
+        remaining_deep_reads=remaining[2],
+    )
+
+
+async def _new_relevant(nodes: WorkflowNodes, state: ResearchState) -> int:
+    screening_id = state["screening_artifact_id"]
+    if screening_id:
+        bundle = await nodes.load(screening_id, ScreeningBundle)
+        return sum(
+            1
+            for card in bundle.cards
+            if card.relevance is not None and card.relevance >= 3 and card.decision != "exclude"
+        )
+    retrieval = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
+    return len(retrieval.records)
+
+
+async def _frozen_rounds(nodes: WorkflowNodes) -> int:
+    async with nodes.factory() as session:
+        run = await session.get(Run, nodes.context.run_id)
+        if run is None:
+            raise DomainError("RUN_NOT_FOUND", "研究不存在。")
+        return frozen_research_rounds(run.input_snapshot, run.config_snapshot)
+
+
+async def _time_exhausted(nodes: WorkflowNodes) -> bool:
+    async with nodes.factory() as session:
+        run = await session.get(Run, nodes.context.run_id)
+        if run is None:
+            raise DomainError("RUN_NOT_FOUND", "研究不存在。")
+        return run.active_elapsed_seconds >= nodes.context.settings.max_research_seconds
 
 
 async def _page(nodes: WorkflowNodes, state: ResearchState) -> NotebookPage:

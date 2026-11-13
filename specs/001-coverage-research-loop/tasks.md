@@ -95,7 +95,7 @@ description: "Task list for the coverage research loop"
 - [X] T023 [US2] 在 `backend/app/sources/semantic_scholar.py` 保持检索与一跳引文，PDF 下载继续交给现有文档服务
 - [X] T024 [US2] 在 `backend/app/memory/index.py` 读取 PostgreSQL `REAL[]`，在进程内计算余弦，默认使用 mock 哈希
 - [X] T025 [US2] 在 `backend/app/memory/notebook.py` 每轮追加一页笔记，记录已执行动作、被拒绝动作、未满足问题和排序方式
-- [ ] T026 [US2] 在 `backend/app/workflow/graph.py` 与 `backend/app/workflow/coverage_flow.py` 实现确认后的多轮循环；四者任一即进入现有 `write`、`validate`、`finalize`：必填列已满足且本轮没有新的高相关论文、连续两轮饱和、预算不足、达到该 run 冻结的 `max_research_rounds`
+- [X] T026 [US2] 在 `backend/app/workflow/graph.py` 与 `backend/app/workflow/coverage_flow.py` 实现确认后的多轮循环；四者任一即进入现有 `write`、`validate`、`finalize`：必填列已满足且本轮没有新的高相关论文、连续两轮饱和、预算不足、达到该 run 冻结的 `max_research_rounds`
 - [ ] T027 [P] [US2] 在 `frontend/src/features/research/ResearchPage.tsx` 按轮次显示已执行动作、被拒绝动作和未满足问题
 - [ ] T028 [P] [US2] 在 `backend/app/mcp_gateway/server.py` 的现有 `get_research_status` 返回 `round_index`、`unmet_question_ids` 和 `stop_reason`，不新增 MCP 工具，也不等待循环结束
 - [ ] T029 [US2] 在 `backend/tests/integration/test_research_loop.py` 证明确认前没有检索，且第二轮查询来自覆盖缺口并与第一轮不同

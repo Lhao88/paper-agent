@@ -16,6 +16,10 @@ from app.workflow.nodes import WorkflowNodes
 from app.workflow.state import ResearchState
 
 
+def route_after_note(state: ResearchState) -> str:
+    return "write" if state["stop_reason"] else "begin_round"
+
+
 def build_graph(services: WorkflowNodes, checkpointer: BaseCheckpointSaver) -> CompiledStateGraph:
     graph = StateGraph(ResearchState)
     names = [
@@ -96,7 +100,7 @@ def build_coverage_graph(
     graph.add_edge("read_selected", "note")
     graph.add_conditional_edges(
         "note",
-        lambda state: "write" if state["stop_reason"] else "begin_round",
+        route_after_note,
         {"begin_round": "begin_round", "write": "write"},
     )
     graph.add_edge("write", "validate")
