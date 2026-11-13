@@ -91,7 +91,7 @@ description: "Task list for the coverage research loop"
 - [X] T019 [US2] 在 `backend/app/memory/coverage.py` 只根据账本和项目库生成覆盖表，不调用模型
 - [X] T020 [US2] 在 `backend/app/planning/admit.py` 用纯函数丢弃超预算、未知论文、未启用来源和越权精读，每轮最多保留 `max_actions_per_round`，默认 6 个。准入规则写明：全文只能下载已纳入或本轮选中的论文；没有摘要不得当成不相关
 - [X] T021 [US2] 在 `backend/app/planning/planner.py` 和 `backend/prompts/planner_round.j2` 只依据规格、最近两页笔记和覆盖表解析最多 6 个 `RoundAction`
-- [ ] T022 [US2] 在 `backend/app/tools/runtime.py` 只执行 T020 已经准入的结果，再调用 `backend/app/tools/search_works.py`、`backend/app/tools/citations.py` 和 `backend/app/tools/search_in_paper.py`，并把来源请求和模型调用记入现有预算账本
+- [X] T022 [US2] 在 `backend/app/tools/runtime.py` 只执行 T020 已经准入的结果，再调用 `backend/app/tools/search_works.py`、`backend/app/tools/citations.py` 和 `backend/app/tools/search_in_paper.py`，并把来源请求和模型调用记入现有预算账本
 - [X] T023 [US2] 在 `backend/app/sources/semantic_scholar.py` 保持检索与一跳引文，PDF 下载继续交给现有文档服务
 - [X] T024 [US2] 在 `backend/app/memory/index.py` 读取 PostgreSQL `REAL[]`，在进程内计算余弦，默认使用 mock 哈希
 - [X] T025 [US2] 在 `backend/app/memory/notebook.py` 每轮追加一页笔记，记录已执行动作、被拒绝动作、未满足问题和排序方式
