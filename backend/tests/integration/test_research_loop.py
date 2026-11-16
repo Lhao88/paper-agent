@@ -5,11 +5,12 @@ from sqlalchemy import func, select
 
 from app.agents.context import AgentContext, RepositoryAccess
 from app.config import PROJECT_ROOT
-from app.db import Artifact, Claim, ModelCall, PaperSource, ProjectPaper, Run, Task
+from app.db import Artifact, Claim, ModelCall, ProjectPaper, Run, Task
 from app.db.session import create_engine, get_test_settings, session_factory
 from app.llm.budget import BudgetService
 from app.llm.gateway import ModelGateway
 from app.llm.mock import MockModelTransport
+from app.memory.library import EXCLUDED, PINNED, visible_decisions
 from app.review.models import ReviewBundle
 from app.schemas.contracts import (
     CoverageReport,
@@ -117,18 +118,30 @@ async def test_coverage_loop_replans_records_claims_and_skips_replay():
         await _replay(engine, factory, settings, run_id, plan_id, source_requests, model_calls)
 
         async with factory.begin() as session:
-            source = await session.scalar(
-                select(PaperSource).where(
-                    PaperSource.provider == "mock", PaperSource.provider_id == "paper-3"
+            members = list(
+                await session.scalars(
+                    select(ProjectPaper).where(ProjectPaper.project_id == project_id)
                 )
             )
-            assert source is not None
-            member = await session.get(ProjectPaper, (project_id, source.paper_id))
-            assert member is not None
-            member.user_decision = "exclude"
-            excluded_id = source.paper_id
+            assert len(members) >= 2
+            excluded_member, pinned_member = members[0], members[1]
+            excluded_member.user_decision = EXCLUDED
+            pinned_member.user_decision = PINNED
+            excluded_id = excluded_member.paper_id
+            pinned_id = pinned_member.paper_id
         second = await start_research(services, project_id, StartResearch(), "coverage-next")
         second_id = UUID(str(second["id"]))
+        async with factory() as session:
+            seen = await visible_decisions(session, project_id)
+            retrieval = await session.scalar(
+                select(Artifact).where(
+                    Artifact.run_id == second_id,
+                    Artifact.operation_key.startswith("coverage-round:"),
+                )
+            )
+        assert pinned_id in seen[PINNED]
+        assert excluded_id in seen[EXCLUDED]
+        assert retrieval is None
         async with AsyncPostgresSaver.from_conn_string(settings.checkpoint_dsn) as saver:
             await _complete(engine, factory, settings, services, saver, second_id)
         async with factory() as session:

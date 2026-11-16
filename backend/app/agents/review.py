@@ -1,4 +1,6 @@
 import hashlib
+from typing import Literal
+from uuid import UUID
 
 from app.agents.context import AgentContext
 from app.agents.prompts import json_text, prompt_messages
@@ -15,7 +17,54 @@ from app.review.models import (
     SynthesisOutput,
 )
 from app.review.validate import validate_synthesis
-from app.schemas.contracts import ResearchPlan, SectionOutput
+from app.schemas.contracts import ClaimRecord, ResearchPlan, SectionOutput, StrictModel
+
+
+class CoverageClaimRow(StrictModel):
+    paper_id: UUID
+    question_id: str
+    column_id: str
+    evidence_id: UUID
+    polarity: Literal["support", "contradict"]
+    quote: str
+
+
+class CoverageWritingContext(StrictModel):
+    rows: list[CoverageClaimRow]
+    uncovered_notes: list[str]
+
+
+def coverage_writing_context(
+    question_ids: list[str],
+    claims: list[ClaimRecord],
+    quotes: dict[UUID, str],
+) -> CoverageWritingContext:
+    """写作只接收已绑定主张及其原文摘录；缺失引用的主张不进入上下文。"""
+    rows: list[CoverageClaimRow] = []
+    covered: set[str] = set()
+    for claim in claims:
+        quote = quotes.get(claim.evidence_id)
+        if quote is None:
+            continue
+        rows.append(
+            CoverageClaimRow(
+                paper_id=claim.paper_id,
+                question_id=claim.question_id,
+                column_id=claim.column_id,
+                evidence_id=claim.evidence_id,
+                polarity=claim.polarity,
+                quote=quote,
+            )
+        )
+        covered.add(claim.question_id)
+    return CoverageWritingContext(
+        rows=rows,
+        uncovered_notes=[
+            f"子问题 {question_id} 未覆盖。"
+            for question_id in question_ids
+            if question_id not in covered
+        ],
+    )
 
 
 class ReviewAgent:

@@ -4,15 +4,15 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.agents.context import AgentContext
-from app.agents.review import ReviewAgent
-from app.db import Artifact, Run
+from app.agents.review import ReviewAgent, coverage_writing_context
+from app.db import Artifact, Claim, Run
 from app.errors import DomainError
 from app.repositories.artifacts import ArtifactRepository
 from app.review.assemble import assemble_review
 from app.review.models import ReviewBundle, ReviewDocument, ReviewSection
 from app.review.repository import load_evidence_bundle
 from app.review.validate import validate_review
-from app.schemas.contracts import ResearchPlan
+from app.schemas.contracts import ClaimRecord, ResearchPlan
 
 
 async def generate_review(
@@ -39,6 +39,40 @@ async def generate_review(
 
     bundle = await load_evidence_bundle(artifact_ids, context)
     agent = ReviewAgent()
+    if context.settings.planner_mode == "coverage":
+        async with factory() as session:
+            stored_claims = list(
+                await session.scalars(select(Claim).where(Claim.run_id == context.run_id))
+            )
+        writing = coverage_writing_context(
+            [question.question_id for question in plan.questions],
+            [
+                ClaimRecord(
+                    claim_id=row.id,
+                    paper_id=row.paper_id,
+                    question_id=row.question_id,
+                    column_id=row.column_id,
+                    evidence_id=row.evidence_id,
+                    polarity=row.polarity if row.polarity == "contradict" else "support",
+                    value_zh=row.value_zh,
+                )
+                for row in stored_claims
+                if row.polarity in {"support", "contradict"}
+            ],
+            {item.evidence_id: item.quote for item in bundle.evidence},
+        )
+        allowed = {row.evidence_id for row in writing.rows}
+        papers = {row.paper_id for row in writing.rows}
+        bundle = bundle.model_copy(
+            update={
+                "cards": [],
+                "evidence": [item for item in bundle.evidence if item.evidence_id in allowed],
+                "references": [item for item in bundle.references if item.paper_id in papers],
+            }
+        )
+        limits_from_writing = writing.uncovered_notes
+    else:
+        limits_from_writing = []
     limits = [
         f"研究主题与范围按计划{plan.version}冻结。",
         "综述仅覆盖本次检索、预算内筛选及实际阅读材料；未检索到不代表领域不存在。",
@@ -46,6 +80,7 @@ async def generate_review(
         "原文定位与引用存在性已由程序核对；模型自检不等同于人工语义验证。",
     ]
     limits.extend(sorted({warning for card in bundle.cards for warning in card.warnings}))
+    limits.extend(limits_from_writing)
     async with factory() as session:
         run = await session.get(Run, context.run_id)
         if run is not None:

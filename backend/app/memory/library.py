@@ -4,6 +4,11 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db import ProjectPaper
+
 if TYPE_CHECKING:
     from app.planning.admit import PaperAdmission
 
@@ -50,3 +55,19 @@ def is_excluded(decision: str | None) -> bool:
 
 def candidate_ids(rows: Sequence[tuple[UUID, str]]) -> list[UUID]:
     return [paper_id for paper_id, decision in rows if canonical_decision(decision) != EXCLUDED]
+
+
+async def visible_decisions(session: AsyncSession, project_id: UUID) -> dict[str, list[UUID]]:
+    """下一次运行检索前可见的在库、钉住和排除。"""
+    rows = list(
+        await session.scalars(select(ProjectPaper).where(ProjectPaper.project_id == project_id))
+    )
+    grouped: dict[str, list[UUID]] = {INCLUDED: [], PINNED: [], EXCLUDED: []}
+    for row in rows:
+        if row.user_decision is None:
+            continue
+        try:
+            grouped[canonical_decision(row.user_decision)].append(row.paper_id)
+        except ValueError:
+            continue
+    return grouped
