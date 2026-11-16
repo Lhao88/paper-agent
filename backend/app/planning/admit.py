@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import Field
 
+from app.memory.library import EXCLUDED, PINNED
 from app.schemas.contracts import CoverageReport, ResearchSpec, RoundAction, StrictModel
 
 
@@ -138,7 +139,7 @@ def _citation_reason(
         paper = library.get(paper_id)
         if paper is None:
             return "paper_not_in_library"
-        if paper.status == "excluded":
+        if paper.status == EXCLUDED:
             return "paper_excluded"
     if action.direction is None:
         return "missing_direction"
@@ -155,14 +156,14 @@ def _read_reason(action: RoundAction, library: dict[UUID, PaperAdmission]) -> st
         paper = library.get(paper_id)
         if paper is None:
             return "paper_not_in_library"
-        if paper.status == "excluded":
+        if paper.status == EXCLUDED:
             return "paper_excluded"
         # 全文只能下载已纳入或本轮选中的论文。没有摘要本身不是不相关。
         if not paper.included and not paper.selected_this_round:
             return "not_included_or_selected"
         if paper.abstract_missing and paper.relevance is None:
             return None
-        if paper.status != "pinned" and (paper.relevance is None or paper.relevance < 3):
+        if paper.status != PINNED and (paper.relevance is None or paper.relevance < 3):
             return "relevance_too_low"
     return None
 
@@ -176,7 +177,7 @@ def _in_paper_reason(
         paper = library.get(paper_id)
         if paper is None:
             return "paper_not_in_library"
-        if paper.status == "excluded":
+        if paper.status == EXCLUDED:
             return "paper_excluded"
         if not paper.has_document:
             return "missing_document"

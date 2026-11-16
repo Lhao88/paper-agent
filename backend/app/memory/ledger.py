@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import Claim, Evidence
+from app.db import Chunk, Claim, Evidence, PaperSource
 from app.errors import DomainError
 
 EXPERIMENTAL_FIELDS = {"result", "metric", "experimental_setup"}
@@ -32,6 +32,8 @@ async def record_claim(
     evidence = await session.get(Evidence, evidence_id)
     if evidence is None or evidence.paper_id != paper_id:
         raise DomainError("CLAIM_EVIDENCE_MISMATCH", "主张必须指向同一篇论文的证据。")
+    if not await _span_matches(session, evidence):
+        raise DomainError("EVIDENCE_INVALID", "原文证据定位不匹配。")
     if evidence.basis == "abstract" and column_field in EXPERIMENTAL_FIELDS:
         raise DomainError("ABSTRACT_NOT_EXPERIMENTAL", "仅摘要证据不能写成实验结论。")
     claim = Claim(
@@ -54,6 +56,27 @@ async def record_claim(
             raise
         return raced
     return claim
+
+
+async def _span_matches(session: AsyncSession, evidence: Evidence) -> bool:
+    text = await _source_text(session, evidence)
+    if text is None:
+        return False
+    return text[evidence.quote_start : evidence.quote_end] == evidence.quote
+
+
+async def _source_text(session: AsyncSession, evidence: Evidence) -> str | None:
+    if evidence.basis == "full_text":
+        if evidence.chunk_id is None:
+            return None
+        chunk = await session.get(Chunk, evidence.chunk_id)
+        return None if chunk is None else chunk.text
+    if evidence.source_id is None:
+        return None
+    source = await session.get(PaperSource, evidence.source_id)
+    if source is None:
+        return None
+    return source.abstract_text
 
 
 async def _existing(

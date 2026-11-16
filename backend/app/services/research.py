@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import Artifact, ModelCall, Project, ProjectPaper, Run, RunEvent, Task
 from app.db import ResearchPlan as PlanRow
 from app.errors import DomainError
+from app.memory.library import canonical_decision
 from app.planning.spec import allowed_sources_for
 from app.repositories.artifacts import ArtifactRepository
 from app.repositories.projects import ProjectRepository
@@ -295,7 +296,7 @@ async def approve_plan(
             )
             if member is None:
                 raise DomainError("PAPER_NOT_FOUND", "只能钉住或排除本项目已有论文。")
-            member.user_decision = decision.decision
+            member.user_decision = canonical_decision(decision.decision)
             member.version += 1
         row.confirmed_at = datetime.now(UTC)
         run.plan_id, run.status, run.available_at = row.id, "queued", datetime.now(UTC)

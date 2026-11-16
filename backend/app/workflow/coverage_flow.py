@@ -14,6 +14,7 @@ from app.documents.reading_service import ReadingService
 from app.errors import DomainError
 from app.memory.coverage import compile_coverage
 from app.memory.ledger import EXPERIMENTAL_FIELDS, record_claim
+from app.memory.library import admission_for, is_excluded
 from app.planning.admit import AdmissionResult, PaperAdmission, admit_actions
 from app.planning.planner import draft_research_spec, propose_round
 from app.planning.spec import allowed_sources_for, normalize_spec
@@ -285,6 +286,7 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
         records = await _persist(nodes, found.records, plan.project_id)
         await _remember_queries(nodes, state["round_index"], queries, records)
     _, _, excluded = await manual_materials(nodes.context, plan.project_id)
+    excluded |= await _library_excluded(nodes, plan.project_id)
     result = RetrievalResult(
         records=[paper for paper in records if paper.paper_id not in excluded],
         warnings=list(dict.fromkeys(warnings)),
@@ -310,6 +312,7 @@ async def screen_new(nodes: WorkflowNodes, state: ResearchState) -> dict[str, ob
     plan = await nodes.get_plan(state)
     retrieved = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
     _, manual_ids, excluded = await manual_materials(nodes.context, plan.project_id)
+    excluded |= await _library_excluded(nodes, plan.project_id)
     records = [paper for paper in retrieved.records if paper.paper_id not in excluded]
     present = {paper.paper_id for paper in records}
     manual_ids = [identifier for identifier in manual_ids if identifier in present]
@@ -586,12 +589,26 @@ async def _admissions(nodes: WorkflowNodes, project_id: UUID) -> list[PaperAdmis
             )
         )
     return [
-        PaperAdmission(
-            paper_id=member.paper_id,
-            status="excluded" if member.user_decision == "exclude" else "active",
-        )
+        _admission(member.paper_id, member.user_decision)
         for member in members
     ]
+
+
+def _admission(paper_id: UUID, decision: str | None) -> PaperAdmission:
+    if decision in {"include", "included", "pin", "pinned", "exclude", "excluded"}:
+        recorded = admission_for(decision)
+        return recorded.model_copy(update={"paper_id": paper_id})
+    return PaperAdmission(paper_id=paper_id, status="active")
+
+
+async def _library_excluded(nodes: WorkflowNodes, project_id: UUID) -> set[UUID]:
+    async with nodes.factory() as session:
+        members = list(
+            await session.scalars(
+                select(ProjectPaper).where(ProjectPaper.project_id == project_id)
+            )
+        )
+    return {member.paper_id for member in members if is_excluded(member.user_decision)}
 
 
 async def _saved_stop(nodes: WorkflowNodes, state: ResearchState) -> str:
