@@ -62,6 +62,7 @@ export function EvidencePanel({
             </blockquote>
             {evidence.data.claims?.map((claim) => (
               <p key={`${claim.column_id}-${claim.polarity}-${claim.question_id}`}>
+                <span className="badge">{claim.polarity}</span>{" "}
                 <span className="badge">
                   {claim.polarity === "support" ? "支持" : "反驳"}
                 </span>{" "}

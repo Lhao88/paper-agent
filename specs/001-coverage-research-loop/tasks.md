@@ -132,14 +132,14 @@ description: "Task list for the coverage research loop"
 ### Tests for User Story 3
 
 - [X] T033 [P] [US3] 在 `backend/tests/integration/test_research_loop.py` 覆盖综述证据都能在主张中找到，以及同项目第二次运行能看见钉住项和排除项
-- [ ] T034 [P] [US3] 在 `frontend/src/features/papers/EvidencePanel.test.tsx` 覆盖主张显示 `support` 或 `contradict`，以及原来的原文位置
+- [X] T034 [P] [US3] 在 `frontend/src/features/papers/EvidencePanel.test.tsx` 覆盖主张显示 `support` 或 `contradict`，以及原来的原文位置
 
 ### Implementation for User Story 3
 
 - [X] T035 [US3] 在 `backend/app/memory/ledger.py` 只在现有原文跨度核对通过后写入主张，主张必须指向同一 `paper_id` 的已有 evidence；同一 `project_id`、`paper_id`、`column_id`、`evidence_id`、`polarity` 不重复插入
 - [X] T036 [US3] 在 `backend/app/agents/review.py` 让 coverage 写作上下文只读已绑定主张和对应原文摘录；没有主张的子问题写成未覆盖说明，极性相反的主张分成两行
 - [X] T037 [US3] 在 `backend/app/memory/library.py` 用现有 `project_papers.user_decision` 保存在库、钉住和排除，使下一次运行检索前可见，且被排除论文不进入新候选集
-- [ ] T038 [US3] 在 `frontend/src/features/papers/EvidencePanel.tsx` 显示主张极性 `support` 或 `contradict` 和原来的原文位置，页码仍来自解析结果
+- [X] T038 [US3] 在 `frontend/src/features/papers/EvidencePanel.tsx` 显示主张极性 `support` 或 `contradict` 和原来的原文位置，页码仍来自解析结果
 
 **Checkpoint**: 四个用户故事都可独立验证
 

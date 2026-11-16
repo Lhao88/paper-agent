@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
 import { EvidencePanel } from "./EvidencePanel";
@@ -12,10 +12,11 @@ describe("evidence panel", () => {
       evidence_id: "evidence-1",
       paper_id: "paper-1",
       basis: "full_text",
+      document_id: "doc-1",
       quote: "ToyCorpus",
       quote_start: 0,
       quote_end: 9,
-      page_number: 1,
+      page_number: 12,
       statement_type: "reported_fact",
       reading_scope: "full_text_targeted",
       claims: [
@@ -42,8 +43,15 @@ describe("evidence panel", () => {
         <EvidencePanel projectId="project" evidenceId="evidence-1" onClose={() => undefined} />
       </QueryClientProvider>,
     );
-    expect(await screen.findByText("支持")).toBeInTheDocument();
+    expect(await screen.findByText("support")).toBeInTheDocument();
+    expect(screen.getByText("contradict")).toBeInTheDocument();
+    expect(screen.getByText("支持")).toBeInTheDocument();
     expect(screen.getByText("反驳")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText("ToyCorpus")).toBeInTheDocument());
+    expect(screen.getByText("ToyCorpus")).toBeInTheDocument();
+    expect(screen.getByText("PDF 第 12 页")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开对应 PDF ↗" })).toHaveAttribute(
+      "href",
+      "/api/projects/project/documents/doc-1/file#page=12",
+    );
   });
 });
