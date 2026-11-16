@@ -54,6 +54,13 @@ def frozen_planner_mode(
     return "legacy"
 
 
+def mode_budget_caps(mode: PlannerMode) -> tuple[int, int]:
+    """legacy 快照保持 20 与 150。只有 coverage 新 run 使用 40 与 180。"""
+    if mode == "coverage":
+        return 40, 180
+    return 20, 150
+
+
 async def execute_run(
     engine: AsyncEngine,
     factory: async_sessionmaker[AsyncSession],
@@ -105,7 +112,14 @@ async def execute_run(
     if frozen.research_strategy == "B0":
         frozen = frozen.model_copy(update={"read_concurrency": 1})
     mode = frozen_planner_mode(inputs, snapshot)
-    frozen = frozen.model_copy(update={"planner_mode": mode})
+    source_cap, llm_cap = mode_budget_caps(mode)
+    frozen = frozen.model_copy(
+        update={
+            "planner_mode": mode,
+            "max_source_requests": source_cap,
+            "max_llm_calls": llm_cap,
+        }
+    )
     business_factory = fenced_factory(engine, lease)
     budget = BudgetService(business_factory)
     transport = (

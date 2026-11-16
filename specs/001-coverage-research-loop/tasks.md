@@ -112,12 +112,12 @@ description: "Task list for the coverage research loop"
 
 ### Tests for User Story 4
 
-- [ ] T030 [P] [US4] 用现有 legacy 集成测试确认 `backend/app/workflow/graph.py` 的 `build_graph` 仍依次经过 plan、approve_plan、retrieve、screen、select、read、analyze、decide、write、validate、finalize
+- [X] T030 [P] [US4] 用现有 legacy 集成测试确认 `backend/app/workflow/graph.py` 的 `build_graph` 仍依次经过 plan、approve_plan、retrieve、screen、select、read、analyze、decide、write、validate、finalize
 
 ### Implementation for User Story 4
 
-- [ ] T031 [US4] 在 `backend/app/worker/execute.py` 把 legacy 快照的来源请求上限保持为 20、模型调用上限保持为 150，只让 coverage 新 run 的快照使用 40 和 180
-- [ ] T032 [US4] 在 `backend/app/config.py` 与 `backend/app/services/research.py` 保持开发默认 `planner_mode=legacy`，并保证一条 run 的冻结模式不会被另一条 run 或后来的进程配置改写
+- [X] T031 [US4] 在 `backend/app/worker/execute.py` 把 legacy 快照的来源请求上限保持为 20、模型调用上限保持为 150，只让 coverage 新 run 的快照使用 40 和 180
+- [X] T032 [US4] 在 `backend/app/config.py` 与 `backend/app/services/research.py` 保持开发默认 `planner_mode=legacy`，并保证一条 run 的冻结模式不会被另一条 run 或后来的进程配置改写
 
 **Checkpoint**: 同一项目里的 legacy 运行与 coverage 运行按各自快照并存
 

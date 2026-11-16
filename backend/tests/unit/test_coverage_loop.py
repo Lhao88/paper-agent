@@ -126,6 +126,33 @@ def test_coverage_graph_loops_then_uses_existing_writing_nodes() -> None:
     } <= names
     assert "begin_round" not in names
     assert "draft_spec" not in names
+    assert _legacy_stage_order(legacy.edges) == [
+        "plan",
+        "approve_plan",
+        "retrieve",
+        "screen",
+        "select",
+        "read",
+        "analyze",
+        "decide",
+        "write",
+        "validate",
+        "finalize",
+    ]
+
+
+def _legacy_stage_order(edges) -> list[str]:
+    following: dict[str, str] = {}
+    for edge in edges:
+        if edge.source == "decide":
+            if edge.target == "write":
+                following["decide"] = "write"
+            continue
+        following[edge.source] = edge.target
+    stages = ["plan"]
+    while stages[-1] != "finalize":
+        stages.append(following[stages[-1]])
+    return stages
 
 
 class _Nodes:

@@ -22,7 +22,7 @@ from app.services.research import (
     start_research,
 )
 from app.worker.claim import claim_next_run
-from app.worker.execute import execute_run
+from app.worker.execute import execute_run, frozen_planner_mode
 
 
 def test_settings_without_env_file_stay_on_legacy_planner() -> None:
@@ -174,5 +174,49 @@ async def test_approve_spec_writes_the_same_freeze_into_both_snapshots() -> None
                 assert stored.input_snapshot[key] == stored.config_snapshot[key]
             assert stored.input_snapshot["planner_mode"] == "coverage"
             assert stored.config_snapshot["max_research_rounds"] == 2
+    finally:
+        await engine.dispose()
+
+
+async def test_each_run_keeps_its_own_mode_and_budget_caps() -> None:
+    legacy_settings = get_test_settings().model_copy(
+        update={"planner_mode": "legacy", "max_source_requests": 40, "max_llm_calls": 180}
+    )
+    coverage_settings = legacy_settings.model_copy(
+        update={"planner_mode": "coverage", "max_source_requests": 20, "max_llm_calls": 150}
+    )
+    engine = create_engine(legacy_settings)
+    factory = session_factory(engine)
+    try:
+        legacy_services = Services(legacy_settings, factory)
+        coverage_services = Services(coverage_settings, factory)
+        first = await create_project(legacy_services, "旧运行", "图神经网络")
+        second = await create_project(coverage_services, "新运行", "图神经网络")
+        legacy_run = await start_research(
+            legacy_services, UUID(str(first["id"])), StartResearch(), "legacy-caps"
+        )
+        coverage_run = await start_research(
+            coverage_services, UUID(str(second["id"])), StartResearch(), "coverage-caps"
+        )
+        assert Settings(_env_file=None).planner_mode == "legacy"
+        assert legacy_run["config_snapshot"]["planner_mode"] == "legacy"
+        assert legacy_run["config_snapshot"]["max_source_requests"] == 20
+        assert legacy_run["config_snapshot"]["max_llm_calls"] == 150
+        assert legacy_run["max_calls"] == 150
+        assert coverage_run["config_snapshot"]["planner_mode"] == "coverage"
+        assert coverage_run["config_snapshot"]["max_source_requests"] == 40
+        assert coverage_run["config_snapshot"]["max_llm_calls"] == 180
+        assert coverage_run["max_calls"] == 180
+        async with factory() as session:
+            stored_legacy = await session.get(Run, UUID(str(legacy_run["id"])))
+            stored_coverage = await session.get(Run, UUID(str(coverage_run["id"])))
+        assert stored_legacy is not None and stored_coverage is not None
+        assert stored_legacy.config_snapshot["planner_mode"] == "legacy"
+        assert stored_legacy.config_snapshot["max_source_requests"] == 20
+        assert stored_legacy.config_snapshot["max_llm_calls"] == 150
+        assert stored_coverage.config_snapshot["planner_mode"] == "coverage"
+        assert frozen_planner_mode(
+            stored_legacy.input_snapshot, stored_legacy.config_snapshot
+        ) == "legacy"
     finally:
         await engine.dispose()

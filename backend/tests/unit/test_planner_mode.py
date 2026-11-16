@@ -34,3 +34,10 @@ def test_missing_snapshot_mode_stays_on_development_default() -> None:
 def test_one_frozen_snapshot_is_used_when_the_other_has_no_mode() -> None:
     assert frozen_planner_mode({}, {"planner_mode": "coverage"}) == "coverage"
     assert frozen_planner_mode({"planner_mode": "legacy"}, {}) == "legacy"
+
+
+def test_mode_caps_keep_legacy_at_20_and_150_and_coverage_at_40_and_180() -> None:
+    from app.worker.execute import mode_budget_caps
+
+    assert mode_budget_caps("legacy") == (20, 150)
+    assert mode_budget_caps("coverage") == (40, 180)

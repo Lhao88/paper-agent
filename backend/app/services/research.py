@@ -23,6 +23,7 @@ from app.schemas.contracts import (
     StrictModel,
 )
 from app.services.base import Services, hash_input, row_data, validate_key
+from app.worker.execute import mode_budget_caps
 
 
 class StartResearch(StrictModel):
@@ -87,6 +88,10 @@ async def start_research(
         }
     }
     snapshot.update(request.budgets)
+    mode = snapshot.get("planner_mode")
+    source_cap, llm_cap = mode_budget_caps("coverage" if mode == "coverage" else "legacy")
+    snapshot["max_source_requests"] = source_cap
+    snapshot["max_llm_calls"] = llm_cap
     snapshot["frozen_corpus_path"] = (
         str(settings.frozen_corpus_path) if settings.frozen_corpus_path else None
     )
