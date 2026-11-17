@@ -151,7 +151,7 @@ description: "Task list for the coverage research loop"
 
 - [X] T039 按 `specs/001-coverage-research-loop/quickstart.md` 在 `backend` 执行 `uv run --locked pytest -q`、`uv run --locked ruff check app tests`、`uv run --locked mypy app`，在 `frontend` 执行 `npm run typecheck`、`npm run lint`、`npm run test`、`npm run build`、`npm run test:e2e`
 - [X] T040 在规格定义的研究循环完成点，也就是 T029 与 T030 都已通过时，才把 `backend/app/config.py` 的开发默认改为 `planner_mode=coverage`。这个完成点不是任务清单的 Phase 6。已经写入快照的 run 保持原模式
-- [ ] T041 [P] 核对 `backend/app/mcp_gateway/server.py` 仍只有现有 9 个工具，并且真实供应商小样本、IDE 与桌面客户端、人工评价集、PostgreSQL 16、Docker 和备份恢复不被写成这次完成
+- [X] T041 [P] 核对 `backend/app/mcp_gateway/server.py` 仍只有现有 9 个工具，并且真实供应商小样本、IDE 与桌面客户端、人工评价集、PostgreSQL 16、Docker 和备份恢复不被写成这次完成
 
 ---
 
