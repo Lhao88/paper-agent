@@ -63,9 +63,9 @@ def test_mcp_allowlists_are_parsed_as_json_arrays(monkeypatch: pytest.MonkeyPatc
     assert settings.mcp_allowed_hosts == ["localhost:8000"]
 
 
-def test_coverage_defaults_stay_legacy_and_within_phase2_bounds() -> None:
+def test_coverage_defaults_use_coverage_mode_and_phase2_bounds() -> None:
     settings = Settings(_env_file=None)
-    assert settings.planner_mode == "legacy"
+    assert settings.planner_mode == "coverage"
     assert settings.max_research_rounds == 4
     assert settings.max_actions_per_round == 6
     assert settings.max_citation_neighbors == 15

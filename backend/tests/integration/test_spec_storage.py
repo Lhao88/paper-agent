@@ -25,8 +25,8 @@ from app.worker.claim import claim_next_run
 from app.worker.execute import execute_run, frozen_planner_mode
 
 
-def test_settings_without_env_file_stay_on_legacy_planner() -> None:
-    assert Settings(_env_file=None).planner_mode == "legacy"
+def test_settings_without_env_file_use_coverage_planner() -> None:
+    assert Settings(_env_file=None).planner_mode == "coverage"
 
 
 async def test_legacy_plan_row_without_spec_json_remains_readable(db_session: AsyncSession) -> None:
@@ -70,7 +70,7 @@ async def test_legacy_plan_row_without_spec_json_remains_readable(db_session: As
     assert [question.question_id for question in plan.questions] == ["q1", "q2", "q3"]
 
 
-async def test_new_run_snapshot_freezes_legacy_planner_without_secrets() -> None:
+async def test_new_run_snapshot_freezes_coverage_planner_without_secrets() -> None:
     settings = get_test_settings()
     engine = create_engine(settings)
     factory = session_factory(engine)
@@ -84,7 +84,9 @@ async def test_new_run_snapshot_freezes_legacy_planner_without_secrets() -> None
         await engine.dispose()
     snapshot = accepted["config_snapshot"]
     assert isinstance(snapshot, dict)
-    assert snapshot["planner_mode"] == "legacy"
+    assert snapshot["planner_mode"] == "coverage"
+    assert snapshot["max_source_requests"] == 40
+    assert snapshot["max_llm_calls"] == 180
     assert snapshot["embedding_mode"] == "mock"
     assert snapshot["enable_semantic_scholar"] is False
     assert "semantic_scholar_api_key" not in snapshot
@@ -93,7 +95,7 @@ async def test_new_run_snapshot_freezes_legacy_planner_without_secrets() -> None
 
 
 async def test_stale_plan_version_is_rejected_and_legacy_plan_stays_readable() -> None:
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)
@@ -198,7 +200,7 @@ async def test_each_run_keeps_its_own_mode_and_budget_caps() -> None:
         coverage_run = await start_research(
             coverage_services, UUID(str(second["id"])), StartResearch(), "coverage-caps"
         )
-        assert Settings(_env_file=None).planner_mode == "legacy"
+        assert Settings(_env_file=None).planner_mode == "coverage"
         assert legacy_run["config_snapshot"]["planner_mode"] == "legacy"
         assert legacy_run["config_snapshot"]["max_source_requests"] == 20
         assert legacy_run["config_snapshot"]["max_llm_calls"] == 150

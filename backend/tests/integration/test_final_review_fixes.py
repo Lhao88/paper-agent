@@ -29,7 +29,7 @@ from app.workflow.state import initial_state
 
 @pytest_asyncio.fixture
 async def case():
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)

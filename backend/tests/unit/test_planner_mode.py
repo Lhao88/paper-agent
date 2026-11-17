@@ -1,4 +1,50 @@
-from app.worker.execute import frozen_planner_mode
+from langgraph.checkpoint.memory import MemorySaver
+
+from app.config import Settings
+from app.worker.execute import frozen_planner_mode, mode_budget_caps
+from app.workflow.graph import build_graph
+
+
+class _Nodes:
+    def __getattr__(self, name: str):
+        async def _node(state: dict[str, object]) -> dict[str, object]:
+            return {}
+
+        return _node
+
+
+def _legacy_stages() -> list[str]:
+    following: dict[str, str] = {}
+    for edge in build_graph(_Nodes(), MemorySaver()).get_graph().edges:
+        if edge.source == "decide":
+            if edge.target == "write":
+                following["decide"] = "write"
+            continue
+        following[edge.source] = edge.target
+    stages = ["plan"]
+    while stages[-1] != "finalize":
+        stages.append(following[stages[-1]])
+    return stages
+
+
+def test_development_default_is_coverage_and_legacy_snapshots_keep_their_graph_and_caps() -> None:
+    assert Settings(_env_file=None).planner_mode == "coverage"
+    legacy = {"planner_mode": "legacy", "max_source_requests": 20, "max_llm_calls": 150}
+    assert frozen_planner_mode(legacy, dict(legacy)) == "legacy"
+    assert mode_budget_caps(frozen_planner_mode(legacy, dict(legacy))) == (20, 150)
+    assert _legacy_stages() == [
+        "plan",
+        "approve_plan",
+        "retrieve",
+        "screen",
+        "select",
+        "read",
+        "analyze",
+        "decide",
+        "write",
+        "validate",
+        "finalize",
+    ]
 
 
 def test_matching_snapshots_select_coverage_without_process_config() -> None:

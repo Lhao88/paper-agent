@@ -56,7 +56,7 @@ async def test_nonselected_paper_is_rejected_before_repository_or_download_acces
 
 
 async def test_selected_pdfs_produce_page_evidence_and_resume_without_model_repeats() -> None:
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     try:
@@ -145,7 +145,7 @@ async def test_selected_pdfs_produce_page_evidence_and_resume_without_model_repe
 
 
 async def test_unavailable_fulltext_produces_only_abstract_background_with_real_source() -> None:
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     try:

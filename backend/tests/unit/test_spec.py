@@ -55,8 +55,8 @@ def draft_with(**updates: object) -> SpecDraft:
     return SpecDraft.model_validate(payload)
 
 
-def test_default_planner_mode_is_legacy() -> None:
-    assert settings().planner_mode == "legacy"
+def test_default_planner_mode_is_coverage() -> None:
+    assert settings().planner_mode == "coverage"
 
 
 def test_allowlist_follows_source_switches() -> None:

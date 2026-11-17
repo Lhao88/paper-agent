@@ -25,7 +25,7 @@ from app.workflow.recovery import recover_run
 
 
 async def test_plan_interrupt_resumes_with_edit_and_final_checkpoint_reconciles_status():
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)
@@ -95,7 +95,7 @@ async def test_plan_interrupt_resumes_with_edit_and_final_checkpoint_reconciles_
 
 
 async def test_lost_claim_cannot_flush_business_results():
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)
@@ -129,7 +129,7 @@ async def test_lost_claim_cannot_flush_business_results():
 
 
 async def test_unknown_call_is_not_automatically_retried():
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)

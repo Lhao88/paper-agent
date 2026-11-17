@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     contact_email: str = ""
     http_user_agent: str = "AcademicWorkbench/0.1"
     enable_arxiv: bool = False
-    planner_mode: Literal["legacy", "coverage"] = "legacy"
+    planner_mode: Literal["legacy", "coverage"] = "coverage"
     max_research_rounds: int = Field(default=4, ge=1, le=8)
     max_actions_per_round: int = Field(default=6, ge=1, le=6)
     max_citation_neighbors: int = Field(default=15, ge=1, le=30)

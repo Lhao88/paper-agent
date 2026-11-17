@@ -22,7 +22,7 @@ from app.workflow.recovery import recover_run
 
 
 async def test_saved_reading_is_reused_after_later_node_crash_and_api_versions(monkeypatch):
-    settings = get_test_settings()
+    settings = get_test_settings().model_copy(update={"planner_mode": "legacy"})
     engine = create_engine(settings)
     factory = session_factory(engine)
     services = Services(settings, factory)

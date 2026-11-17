@@ -33,7 +33,7 @@ def frozen_planner_mode(
     """选图只认该 run 快照里的 planner_mode，不读取后来的进程配置。
 
     两份快照都写入同一个模式时使用该模式。只写在其中一份时使用那份冻结值。
-    两份不一致或都没有时回到开发默认 legacy。
+    两份不一致或都没有时保持 legacy，不跟随后来改成 coverage 的开发默认。
     """
     input_mode = input_snapshot.get("planner_mode")
     config_mode = config_snapshot.get("planner_mode")
