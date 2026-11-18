@@ -8,7 +8,18 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.config import Settings
-from app.db import Artifact, Claim, Evidence, Project, ProjectPaper, Run, Task
+from app.db import (
+    Artifact,
+    Chunk,
+    Claim,
+    Document,
+    Evidence,
+    PaperSource,
+    Project,
+    ProjectPaper,
+    Run,
+    Task,
+)
 from app.db import ResearchPlan as PlanRow
 from app.documents.reading_service import ReadingService
 from app.errors import DomainError
@@ -21,8 +32,10 @@ from app.planning.spec import allowed_sources_for, normalize_spec
 from app.repositories.artifacts import ArtifactRepository
 from app.repositories.papers import PaperRepository
 from app.schemas.contracts import (
+    ChunkRecord,
     ClaimRecord,
     CoverageReport,
+    ExtractionOutput,
     NotebookPage,
     PaperRecord,
     PlanRequest,
@@ -38,6 +51,8 @@ from app.schemas.contracts import (
 from app.screening.service import ScreeningBundle, screen_and_select
 from app.sources.factory import build_sources
 from app.sources.normalize import normalize_doi
+from app.tools.citations import expand_citations
+from app.tools.search_in_paper import search_in_paper
 from app.tools.search_works import search_works
 from app.worker.claim import lock_owned
 from app.workflow.literature import manual_materials
@@ -47,6 +62,10 @@ from app.workflow.state import ResearchState
 
 class RoundReading(BaseModel):
     artifact_ids: list[UUID]
+
+
+class ExecutedActions(BaseModel):
+    executed_action_ids: list[str]
 
 
 async def draft_spec(nodes: WorkflowNodes, state: ResearchState) -> dict[str, object]:
@@ -221,7 +240,12 @@ async def propose(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
     plan = await nodes.get_plan(state)
     spec = await _spec(nodes, plan.plan_id)
     coverage = await nodes.load(state["coverage_artifact_id"], CoverageReport)
-    round_plan = await propose_round(spec, coverage, state["round_index"], nodes.context)
+    notes = [
+        await nodes.load(identifier, NotebookPage) for identifier in state["notebook_ids"]
+    ]
+    round_plan = await propose_round(
+        spec, coverage, state["round_index"], nodes.context, notes=notes[-2:]
+    )
     await nodes.save(key, "round_plan", round_plan)
     return {"stage": "execute"}
 
@@ -258,6 +282,11 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
         ),
     )
     await nodes.save(_admission_key(nodes, state["round_index"]), "admission", admission)
+    executed = [
+        action.action_id
+        for action in admission.actions
+        if action.kind == "search_works" and action.query and action.providers
+    ]
     queries = [
         SearchQuery(
             query_id=f"round-{state['round_index']}-{index}",
@@ -285,6 +314,71 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
         warnings.extend(found.warnings)
         records = await _persist(nodes, found.records, plan.project_id)
         await _remember_queries(nodes, state["round_index"], queries, records)
+    citations = [action for action in admission.actions if action.kind == "expand_citations"]
+    in_paper = [action for action in admission.actions if action.kind == "search_in_paper"]
+    provider_ids = await _provider_map(
+        nodes, [paper_id for action in citations for paper_id in action.paper_ids]
+    )
+    chunks = await _chunks_for(
+        nodes, [paper_id for action in in_paper for paper_id in action.paper_ids]
+    )
+    if citations:
+        async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
+            for action in citations:
+                if action.direction is None:
+                    continue
+                ready = [
+                    (paper_id, provider_ids[paper_id])
+                    for paper_id in action.paper_ids
+                    if paper_id in provider_ids
+                ]
+                if not ready:
+                    continue
+                provider = action.providers[0] if action.providers else "semantic_scholar"
+                await nodes.context.budget.reserve_source_request(
+                    nodes.context.run_id, nodes.context.settings.max_source_requests
+                )
+                async with nodes.factory() as session:
+                    for paper_id, provider_paper_id in ready:
+                        expansion = await expand_citations(
+                            session,
+                            project_id=plan.project_id,
+                            from_paper_id=paper_id,
+                            provider_paper_id=provider_paper_id,
+                            provider=provider,
+                            direction=action.direction,
+                            limit=nodes.context.settings.max_citation_neighbors,
+                            client=client,
+                            settings=nodes.context.settings,
+                        )
+                        warnings.extend(expansion.warnings)
+                        records.extend(
+                            await _persist(nodes, expansion.records, plan.project_id)
+                        )
+                executed.append(action.action_id)
+    for action in in_paper:
+        flat = [
+            chunk
+            for paper_id in action.paper_ids
+            for chunk in chunks.get(paper_id, [])
+        ]
+        digest = hashlib.sha256(action.model_dump_json().encode()).hexdigest()
+        await nodes.context.budget.reserve_call(
+            nodes.context.run_id,
+            f"tool:search_in_paper:{state['round_index']}:{action.action_id}",
+            digest,
+            512,
+        )
+        found_chunks = await search_in_paper(
+            flat,
+            action.query or "",
+            nodes.context.settings.embedding_mode,
+            limit=5,
+            extract=_extract_nothing,
+        )
+        if found_chunks.failure:
+            warnings.append(found_chunks.failure)
+        executed.append(action.action_id)
     _, _, excluded = await manual_materials(nodes.context, plan.project_id)
     excluded |= await _library_excluded(nodes, plan.project_id)
     result = RetrievalResult(
@@ -292,6 +386,11 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
         warnings=list(dict.fromkeys(warnings)),
     )
     identifier = await nodes.save(key, "retrieval", result)
+    await nodes.save(
+        _executed_key(nodes, state["round_index"]),
+        "executed_actions",
+        ExecutedActions(executed_action_ids=executed),
+    )
     stop = "stop" if any(action.kind == "stop" for action in admission.actions) else ""
     if admission.stop_reason and not admission.actions:
         stop = admission.stop_reason
@@ -461,9 +560,12 @@ async def _page(nodes: WorkflowNodes, state: ResearchState) -> NotebookPage:
         if admission_row is not None
         else AdmissionResult(actions=[], rejected=[])
     )
+    executed_row = await _artifact(nodes, _executed_key(nodes, state["round_index"]))
+    raw = executed_row.payload_json["executed_action_ids"] if executed_row is not None else []
+    executed_ids = [str(item) for item in raw] if isinstance(raw, list) else []
     return NotebookPage(
         round_index=state["round_index"],
-        executed_action_ids=[action.action_id for action in admission.actions],
+        executed_action_ids=executed_ids,
         rejected_actions=[
             {"action_id": item.action_id, "reason": item.reason} for item in admission.rejected
         ],
@@ -485,6 +587,10 @@ def _plan_key(nodes: WorkflowNodes, round_index: int) -> str:
 
 def _retrieval_key(nodes: WorkflowNodes, round_index: int) -> str:
     return f"coverage-round:{nodes.context.run_id}:{round_index}"
+
+
+def _executed_key(nodes: WorkflowNodes, round_index: int) -> str:
+    return f"coverage-executed:{nodes.context.run_id}:{round_index}"
 
 
 def _admission_key(nodes: WorkflowNodes, round_index: int) -> str:
@@ -556,6 +662,55 @@ async def _coverage_history(
     if retrieval is not None:
         count = len(RetrievalResult.model_validate(retrieval.payload_json).records)
     return filled, report.consecutive_saturated_rounds, count
+
+
+async def _provider_map(nodes: WorkflowNodes, paper_ids: list[UUID]) -> dict[UUID, str]:
+    if not paper_ids:
+        return {}
+    async with nodes.factory() as session:
+        rows = list(
+            await session.scalars(
+                select(PaperSource).where(PaperSource.paper_id.in_(paper_ids))
+            )
+        )
+    return {
+        row.paper_id: row.provider_id
+        for row in rows
+        if row.provider == "semantic_scholar"
+    }
+
+
+async def _chunks_for(
+    nodes: WorkflowNodes, paper_ids: list[UUID]
+) -> dict[UUID, list[ChunkRecord]]:
+    if not paper_ids:
+        return {}
+    async with nodes.factory() as session:
+        rows = list(
+            await session.execute(
+                select(Document.paper_id, Chunk)
+                .join(Document, Chunk.document_id == Document.id)
+                .where(Document.paper_id.in_(paper_ids))
+            )
+        )
+    grouped: dict[UUID, list[ChunkRecord]] = {}
+    for paper_id, chunk in rows:
+        grouped.setdefault(paper_id, []).append(
+            ChunkRecord(
+                chunk_id=chunk.id,
+                document_id=chunk.document_id,
+                page_number=chunk.page_number,
+                text=chunk.text,
+                text_sha256=chunk.text_sha256,
+                section_hint=chunk.section_hint,
+            )
+        )
+    return grouped
+
+
+async def _extract_nothing(chunks: list[ChunkRecord]) -> ExtractionOutput:
+    del chunks
+    return ExtractionOutput(candidates=[])
 
 
 async def _remaining(nodes: WorkflowNodes, project_id: UUID) -> tuple[int, int, int]:
