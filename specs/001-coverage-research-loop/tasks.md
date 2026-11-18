@@ -235,3 +235,12 @@ Task: "T009 frontend/src/features/research/PlanEditor.test.tsx"
 - 不要自动 git commit，不要 push
 - 恢复已有运行前先确认旧 worker 已退出
 - live 测试保持默认跳过
+
+---
+
+## Phase 8: Convergence
+
+- [ ] T042 在 `backend/app/workflow/coverage_flow.py` 的 `propose` 读取最近两页笔记并传给 `propose_round`，使每轮规划只依据研究规格、这两页笔记和当前覆盖表 per FR-007 (partial)
+- [ ] T043 让 coverage 轮次只执行已经准入的 `expand_citations` 和 `search_in_paper`，笔记中的已执行动作只记录实际执行过的动作 per FR-008 (partial)
+- [ ] T044 把同一列上极性相反的主张写成读者可见的方法比较两行，不合并成一个排名 per US3/AC3 (partial)
+- [ ] T045 某个来源全部失败时，在该轮笔记记录失败，并在覆盖表写下该来源限制 per Edge Cases (partial)
