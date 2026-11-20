@@ -43,6 +43,14 @@ class ComparisonRow(StrictModel):
     comparability: str = "未经实验条件一致性人工核验，不据此进行数值排名。"
 
 
+class MethodComparisonRow(StrictModel):
+    paper_id: UUID
+    column_id: str
+    polarity: Literal["support", "contradict"]
+    quote: str
+    evidence_id: UUID
+
+
 class SynthesisArtifact(SynthesisOutput):
     comparison: list[ComparisonRow]
     warnings: list[str]
@@ -81,6 +89,7 @@ class ReviewDocument(StrictModel):
     evidence: list[EvidenceRecord]
     references: list[Reference]
     limitations: list[str]
+    comparison: list[MethodComparisonRow] = Field(default_factory=list)
 
 
 class CheckIssue(StrictModel):

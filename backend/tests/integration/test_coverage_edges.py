@@ -42,7 +42,6 @@ from app.workflow.nodes import WorkflowNodes
 from app.workflow.state import initial_state
 
 
-@pytest.mark.xfail(strict=True, reason="第0轮尚未检索时覆盖表被标成饱和")
 async def test_round_zero_is_not_saturated_while_questions_remain():
     run = await _finished(2)
     try:
@@ -79,7 +78,6 @@ async def test_repeat_hits_are_not_new_relevant_papers():
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="最后一轮阅读写入的主张没有进入覆盖表")
 async def test_latest_coverage_includes_claims_from_the_final_read():
     run = await _finished(1)
     try:

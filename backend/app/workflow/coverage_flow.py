@@ -7,6 +7,7 @@ from langgraph.types import interrupt
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from app.agents.prompts import json_text
 from app.config import Settings
 from app.db import (
     Artifact,
@@ -483,6 +484,16 @@ async def note(nodes: WorkflowNodes, state: ResearchState) -> dict[str, object]:
     if identifier not in notebooks:
         notebooks = [*notebooks, identifier]
     fresh = await _fresh_coverage(nodes, state, await _new_relevant(nodes, state))
+    if state["retrieval_artifact_id"]:
+        retrieved = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
+        limits = _source_failure_limits(retrieved)
+        if limits:
+            fresh = fresh.model_copy(
+                update={
+                    "corpus_limits": list(dict.fromkeys([*fresh.corpus_limits, *limits]))
+                }
+            )
+    await _store_round_coverage(nodes, state, fresh)
     stop = coverage_stop_reason(
         existing=state["stop_reason"],
         round_index=state["round_index"],
@@ -573,8 +584,34 @@ async def _page(nodes: WorkflowNodes, state: ResearchState) -> NotebookPage:
         filled_column_ids=[cell.column_id for cell in coverage.cells if cell.filled_papers > 0],
         open_gaps=list(coverage.unmet_question_ids),
         queries=[action.query for action in admission.actions if action.query],
+        source_failures=_source_failure_limits(retrieval),
         index_mode="bm25" if nodes.context.settings.embedding_mode == "off" else "hybrid",
     )
+
+
+def _source_failure_limits(retrieval: RetrievalResult) -> list[str]:
+    limits: list[str] = []
+    for warning in retrieval.warnings:
+        if warning.startswith("source_unavailable:") or warning.startswith("source_failed:"):
+            limits.append(f"source_failed:{warning.split(':', 1)[1]}")
+    return list(dict.fromkeys(limits))
+
+
+async def _store_round_coverage(
+    nodes: WorkflowNodes, state: ResearchState, report: CoverageReport
+) -> None:
+    key = _coverage_key(nodes, state["round_index"])
+    existing = await _artifact(nodes, key)
+    if existing is None:
+        await nodes.save(key, "coverage", report)
+        return
+    payload = report.model_dump(mode="json")
+    async with nodes.factory.begin() as session:
+        row = await session.get(Artifact, existing.id)
+        if row is None or row.run_id != nodes.context.run_id:
+            raise DomainError("ARTIFACT_NOT_FOUND", "覆盖表不存在。")
+        row.payload_json = payload
+        row.input_hash = hashlib.sha256(json_text(payload).encode()).hexdigest()
 
 
 def _coverage_key(nodes: WorkflowNodes, round_index: int) -> str:

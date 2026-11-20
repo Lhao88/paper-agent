@@ -912,6 +912,19 @@ export interface components {
             /** Old Worker Stopped */
             old_worker_stopped: boolean;
         };
+        /** MethodComparisonRow */
+        MethodComparisonRow: {
+            /** Paper Id */
+            paper_id: string;
+            /** Column Id */
+            column_id: string;
+            /** Polarity */
+            polarity: "support" | "contradict";
+            /** Quote */
+            quote: string;
+            /** Evidence Id */
+            evidence_id: string;
+        };
         /** ReviewDocument */
         ReviewDocument: {
             /** Topic */
@@ -929,6 +942,8 @@ export interface components {
             references: components["schemas"]["Reference"][];
             /** Limitations */
             limitations: string[];
+            /** Comparison */
+            comparison?: components["schemas"]["MethodComparisonRow"][];
         };
         /** ReviewListItem */
         ReviewListItem: {

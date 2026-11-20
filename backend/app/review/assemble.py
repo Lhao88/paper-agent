@@ -2,7 +2,14 @@ from datetime import UTC, datetime
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.errors import DomainError
-from app.review.models import Reference, ReviewDocument, ReviewSection, StoredClaim, StoredSection
+from app.review.models import (
+    MethodComparisonRow,
+    Reference,
+    ReviewDocument,
+    ReviewSection,
+    StoredClaim,
+    StoredSection,
+)
 from app.schemas.contracts import EvidenceRecord
 
 
@@ -12,6 +19,7 @@ def assemble_review(
     evidence: list[EvidenceRecord],
     references: list[Reference],
     limitations: list[str],
+    comparison: list[MethodComparisonRow] | None = None,
 ) -> ReviewDocument:
     by_id = {item.evidence_id: item for item in evidence}
     refs = {item.paper_id: item for item in references}
@@ -56,4 +64,5 @@ def assemble_review(
             refs[key].model_copy(update={"number": value}) for key, value in numbers.items()
         ],
         limitations=limitations,
+        comparison=list(comparison or []),
     )

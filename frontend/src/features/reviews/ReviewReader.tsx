@@ -41,6 +41,32 @@ export function Claim({
   );
 }
 
+export function MethodComparison({
+  rows,
+}: {
+  rows: {
+    paper_id: string;
+    column_id: string;
+    polarity: "support" | "contradict";
+    quote: string;
+    evidence_id: string;
+  }[];
+}) {
+  return (
+    <table aria-label="方法比较">
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.evidence_id}>
+            <td>{row.column_id}</td>
+            <td>{row.polarity}</td>
+            <td>{row.quote}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function ReviewReader() {
   const { projectId = "", artifactId = "" } = useParams();
   const [evidenceId, setEvidenceId] = useState("");
@@ -133,6 +159,12 @@ export function ReviewReader() {
           <p className="hint">
             引用存在性和文档位置可核对；语义支持尚未完成人工验证。
           </p>
+          {review.comparison && review.comparison.length > 0 && (
+            <section id="method-comparison">
+              <h2>方法比较</h2>
+              <MethodComparison rows={review.comparison} />
+            </section>
+          )}
           {review.sections.map((section) => (
             <section id={section.section_id} key={section.section_id}>
               <span className="eyebrow">RESEARCH FINDINGS</span>

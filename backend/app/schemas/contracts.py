@@ -267,6 +267,7 @@ class NotebookPage(StrictModel):
     filled_column_ids: list[str]
     open_gaps: list[str]
     queries: list[str] = Field(default_factory=list)
+    source_failures: list[str] = Field(default_factory=list)
     index_mode: Literal["hybrid", "bm25"]
 
 

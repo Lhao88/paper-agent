@@ -9,7 +9,7 @@ from app.db import Artifact, Claim, Run
 from app.errors import DomainError
 from app.repositories.artifacts import ArtifactRepository
 from app.review.assemble import assemble_review
-from app.review.models import ReviewBundle, ReviewDocument, ReviewSection
+from app.review.models import MethodComparisonRow, ReviewBundle, ReviewDocument, ReviewSection
 from app.review.repository import load_evidence_bundle
 from app.review.validate import validate_review
 from app.schemas.contracts import ClaimRecord, ResearchPlan
@@ -71,8 +71,19 @@ async def generate_review(
             }
         )
         limits_from_writing = writing.uncovered_notes
+        comparison = [
+            MethodComparisonRow(
+                paper_id=row.paper_id,
+                column_id=row.column_id,
+                polarity=row.polarity,
+                quote=row.quote,
+                evidence_id=row.evidence_id,
+            )
+            for row in writing.rows
+        ]
     else:
         limits_from_writing = []
+        comparison = []
     limits = [
         f"研究主题与范围按计划{plan.version}冻结。",
         "综述仅覆盖本次检索、预算内筛选及实际阅读材料；未检索到不代表领域不存在。",
@@ -111,7 +122,9 @@ async def generate_review(
             )
         )
         limits.append("没有可用原文证据，未生成研究结论。")
-    review = assemble_review(plan.topic, sections, bundle.evidence, bundle.references, limits)
+    review = assemble_review(
+        plan.topic, sections, bundle.evidence, bundle.references, limits, comparison
+    )
     # Persist the usable draft before optional model checking, so a failed check loses no text.
     draft_id = await save("review_draft", review.model_dump(mode="json"))
     async with factory() as session:
@@ -154,6 +167,7 @@ async def generate_review(
                     bundle.evidence,
                     bundle.references,
                     limits + ["已按一次模型自检建议修订，原问题仍需人工复核。"],
+                    comparison,
                 )
                 report = validate_review(review)
                 report.issues = check.issues  # original block IDs deliberately retained for audit
