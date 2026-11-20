@@ -229,7 +229,7 @@ async def begin_round(nodes: WorkflowNodes, state: ResearchState) -> dict[str, o
         remaining_llm_calls=remaining[1],
         remaining_deep_reads=remaining[2],
     )
-    identifier = await nodes.save(_coverage_key(nodes, state["round_index"]), "coverage", report)
+    identifier = await _store_round_coverage(nodes, state, report)
     return {"coverage_artifact_id": str(identifier), "stage": "propose"}
 
 
@@ -411,11 +411,7 @@ async def screen_new(nodes: WorkflowNodes, state: ResearchState) -> dict[str, ob
         }
     plan = await nodes.get_plan(state)
     retrieved = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
-    _, manual_ids, excluded = await manual_materials(nodes.context, plan.project_id)
-    excluded |= await _library_excluded(nodes, plan.project_id)
-    records = [paper for paper in retrieved.records if paper.paper_id not in excluded]
-    present = {paper.paper_id for paper in records}
-    manual_ids = [identifier for identifier in manual_ids if identifier in present]
+    records, manual_ids = await _round_candidates(nodes, plan, retrieved.records)
     bundle = await screen_and_select(records, plan, nodes.context, manual_ids)
     stop = next(
         (
@@ -454,7 +450,8 @@ async def read_selected(nodes: WorkflowNodes, state: ResearchState) -> dict[str,
     plan = await nodes.get_plan(state)
     retrieved = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
     selection = await nodes.load(state["selection_artifact_id"], SelectionResult)
-    reading = await ReadingService(nodes.context).read_selected(retrieved.records, selection, plan)
+    records, _manual_ids = await _round_candidates(nodes, plan, retrieved.records)
+    reading = await ReadingService(nodes.context).read_selected(records, selection, plan)
     spec = await _spec(nodes, plan.plan_id)
     await _record_reading_claims(nodes, plan, spec, reading.cards)
     accumulated = list(
@@ -534,16 +531,20 @@ async def _fresh_coverage(
 
 
 async def _new_relevant(nodes: WorkflowNodes, state: ResearchState) -> int:
+    earlier = await _paper_ids_before(nodes, state["round_index"])
     screening_id = state["screening_artifact_id"]
     if screening_id:
         bundle = await nodes.load(screening_id, ScreeningBundle)
         return sum(
             1
             for card in bundle.cards
-            if card.relevance is not None and card.relevance >= 3 and card.decision != "exclude"
+            if card.paper_id not in earlier
+            and card.relevance is not None
+            and card.relevance >= 3
+            and card.decision != "exclude"
         )
     retrieval = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
-    return len(retrieval.records)
+    return sum(1 for paper in retrieval.records if paper.paper_id not in earlier)
 
 
 async def _frozen_rounds(nodes: WorkflowNodes) -> int:
@@ -599,12 +600,11 @@ def _source_failure_limits(retrieval: RetrievalResult) -> list[str]:
 
 async def _store_round_coverage(
     nodes: WorkflowNodes, state: ResearchState, report: CoverageReport
-) -> None:
+) -> UUID:
     key = _coverage_key(nodes, state["round_index"])
     existing = await _artifact(nodes, key)
     if existing is None:
-        await nodes.save(key, "coverage", report)
-        return
+        return await nodes.save(key, "coverage", report)
     payload = report.model_dump(mode="json")
     async with nodes.factory.begin() as session:
         row = await session.get(Artifact, existing.id)
@@ -612,6 +612,7 @@ async def _store_round_coverage(
             raise DomainError("ARTIFACT_NOT_FOUND", "覆盖表不存在。")
         row.payload_json = payload
         row.input_hash = hashlib.sha256(json_text(payload).encode()).hexdigest()
+        return row.id
 
 
 def _coverage_key(nodes: WorkflowNodes, round_index: int) -> str:
@@ -697,8 +698,38 @@ async def _coverage_history(
     }
     count = 0
     if retrieval is not None:
-        count = len(RetrievalResult.model_validate(retrieval.payload_json).records)
+        current = RetrievalResult.model_validate(retrieval.payload_json)
+        earlier = await _paper_ids_before(nodes, round_index - 1)
+        count = sum(1 for paper in current.records if paper.paper_id not in earlier)
     return filled, report.consecutive_saturated_rounds, count
+
+
+async def _round_candidates(
+    nodes: WorkflowNodes, plan: ResearchPlan, retrieved: list[PaperRecord]
+) -> tuple[list[PaperRecord], list[UUID]]:
+    manual_records, _, excluded = await manual_materials(nodes.context, plan.project_id)
+    excluded |= await _library_excluded(nodes, plan.project_id)
+    records = [paper for paper in retrieved if paper.paper_id not in excluded]
+    present = {paper.paper_id for paper in records}
+    for paper in manual_records:
+        if paper.paper_id not in present and paper.paper_id not in excluded:
+            records.append(paper)
+            present.add(paper.paper_id)
+    manual_ids = [paper.paper_id for paper in manual_records if paper.paper_id in present]
+    return records, manual_ids
+
+
+async def _paper_ids_before(nodes: WorkflowNodes, round_index: int) -> set[UUID]:
+    seen: set[UUID] = set()
+    for index in range(round_index):
+        row = await _artifact(nodes, _retrieval_key(nodes, index))
+        if row is None:
+            continue
+        seen.update(
+            paper.paper_id
+            for paper in RetrievalResult.model_validate(row.payload_json).records
+        )
+    return seen
 
 
 async def _provider_map(nodes: WorkflowNodes, paper_ids: list[UUID]) -> dict[UUID, str]:
@@ -780,10 +811,38 @@ async def _admissions(nodes: WorkflowNodes, project_id: UUID) -> list[PaperAdmis
                 select(ProjectPaper).where(ProjectPaper.project_id == project_id)
             )
         )
-    return [
-        _admission(member.paper_id, member.user_decision)
-        for member in members
-    ]
+        documents = set(
+            await session.scalars(
+                select(Document.paper_id).where(Document.owner_project_id == project_id)
+            )
+        )
+        screened = list(
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.run_id == nodes.context.run_id,
+                    Artifact.kind == "screening",
+                    Artifact.paper_id.is_not(None),
+                )
+            )
+        )
+    relevance: dict[UUID, int | None] = {}
+    for artifact in sorted(screened, key=lambda item: item.created_at):
+        if artifact.paper_id is None:
+            continue
+        value = artifact.payload_json.get("relevance")
+        relevance[artifact.paper_id] = value if isinstance(value, int) else None
+    admitted = []
+    for member in members:
+        base = _admission(member.paper_id, member.user_decision)
+        admitted.append(
+            base.model_copy(
+                update={
+                    "relevance": relevance.get(member.paper_id),
+                    "has_document": member.paper_id in documents,
+                }
+            )
+        )
+    return admitted
 
 
 def _admission(paper_id: UUID, decision: str | None) -> PaperAdmission:

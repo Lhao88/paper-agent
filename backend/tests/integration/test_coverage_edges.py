@@ -53,7 +53,6 @@ async def test_round_zero_is_not_saturated_while_questions_remain():
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="重复命中的已入库论文仍被计为新论文")
 async def test_repeat_hits_are_not_new_relevant_papers():
     run = await _finished(2)
     try:
@@ -260,7 +259,6 @@ async def test_admitted_citation_action_is_executed_before_it_is_noted():
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="准入状态没有带上筛选相关性和文档")
 async def test_admission_state_keeps_relevance_and_documents():
     run = await _finished(1)
     try:
@@ -292,7 +290,6 @@ async def test_admission_state_keeps_relevance_and_documents():
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="带文档的手动纳入论文没有进入本轮候选")
 async def test_included_local_document_enters_the_round_candidates():
     settings = _settings(1)
     engine = create_engine(settings)

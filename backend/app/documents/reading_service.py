@@ -202,7 +202,22 @@ class ReadingService:
                 return ReadingCard.model_validate(previous.payload_json), previous.id
             version = previous.version + 1 if previous is not None else 1
             supersedes = previous.id if previous is not None else None
-        document = await download_selected(paper, selection, context)
+        try:
+            document = await download_selected(paper, selection, context)
+        except DomainError as exc:
+            card = await _abstract_only(paper, [exc.code], context)
+            async with factory.begin() as session:
+                saved = await ArtifactRepository(session).get_or_create(
+                    context.run_id,
+                    f"{prefix}{version}",
+                    "reading",
+                    card.model_dump(mode="json"),
+                    digest,
+                )
+                saved.paper_id = paper.paper_id
+                saved.version = version
+                saved.supersedes_id = supersedes
+                return card, saved.id
         warnings = list(document.warnings)
         if any(source.provider == "mock" for source in paper.sources):
             warnings.append("MOCK_SYNTHETIC_CORPUS")
