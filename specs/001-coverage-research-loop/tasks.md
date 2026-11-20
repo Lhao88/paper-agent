@@ -244,3 +244,13 @@ Task: "T009 frontend/src/features/research/PlanEditor.test.tsx"
 - [X] T043 让 coverage 轮次只执行已经准入的 `expand_citations` 和 `search_in_paper`，笔记中的已执行动作只记录实际执行过的动作 per FR-008 (partial)
 - [X] T044 把同一列上极性相反的主张写成读者可见的方法比较两行，不合并成一个排名 per US3/AC3 (partial)
 - [X] T045 某个来源全部失败时，在该轮笔记记录失败，并在覆盖表写下该来源限制 per Edge Cases (partial)
+
+---
+
+## Phase 9: Convergence
+
+- [ ] T046 计算本轮新高相关论文时排除已经在项目库中的重复命中，避免把旧论文当成新论文并推迟饱和 per FR-022 (partial)
+- [ ] T047 在 `backend/app/workflow/coverage_flow.py` 的准入状态带上筛选相关性和是否已有解析文档，使精读和篇内检索按这些条件放行 per Edge Cases (partial)
+- [ ] T048 让已经纳入且带解析文档的论文进入本轮候选，即使它没有出现在本轮新检索结果里 per FR-012 (partial)
+- [ ] T049 来源调用抛错时记录该动作失败并保留已保存结果，同一次检索的重试不得再次扣来源预算 per Edge Cases (partial)
+- [ ] T050 必填目标未满足时拒绝单独停止；补检索没有论文时不得进入空筛选 per Edge Cases (partial)
