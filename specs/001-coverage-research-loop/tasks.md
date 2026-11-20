@@ -254,3 +254,12 @@ Task: "T009 frontend/src/features/research/PlanEditor.test.tsx"
 - [X] T048 让已经纳入且带解析文档的论文进入本轮候选，即使它没有出现在本轮新检索结果里 per FR-012 (partial)
 - [X] T049 来源调用抛错时记录该动作失败并保留已保存结果，同一次检索的重试不得再次扣来源预算 per Edge Cases (partial)
 - [X] T050 必填目标未满足时拒绝单独停止；补检索没有论文时不得进入空筛选 per Edge Cases (partial)
+
+---
+
+## Phase 10: Convergence
+
+- [ ] T051 在 `backend/app/workflow/coverage_flow.py` 的准入状态写入仍为空的必填列和已用篇内检索次数，使篇内检索只对空列放行，并执行该运行冻结的每篇上限 per Edge Cases (partial)
+- [ ] T052 连续饱和只按已经完成的轮次计数，尚未执行的轮次不得预先记成饱和，因此一轮空检索之后仍拒绝单独停止 per FR-022 (partial)
+- [ ] T053 规划动作全部无法执行且预算仍够时补一条缺口检索，预算不够则停止，不得空转完剩余轮次 per Edge Cases (partial)
+- [ ] T054 一跳引文或篇内检索失败时在该轮笔记记录动作警告并保留已保存检索结果，重试不得再次扣已扣的来源预算 per Edge Cases (partial)
