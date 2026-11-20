@@ -288,6 +288,7 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
         for action in admission.actions
         if action.kind == "search_works" and action.query and action.providers
     ]
+    search_ids = set(executed)
     queries = [
         SearchQuery(
             query_id=f"round-{state['round_index']}-{index}",
@@ -308,13 +309,18 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
             await nodes.context.budget.reserve_source_request(
                 nodes.context.run_id, nodes.context.settings.max_source_requests
             )
-        async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
-            found = await search_works(
-                queries, build_sources(nodes.context.settings, client), limit=20
-            )
-        warnings.extend(found.warnings)
-        records = await _persist(nodes, found.records, plan.project_id)
-        await _remember_queries(nodes, state["round_index"], queries, records)
+        try:
+            async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
+                found = await search_works(
+                    queries, build_sources(nodes.context.settings, client), limit=20
+                )
+        except Exception as exc:
+            warnings.append(f"source_failed:{type(exc).__name__}")
+            executed = [action_id for action_id in executed if action_id not in search_ids]
+        else:
+            warnings.extend(found.warnings)
+            records = await _persist(nodes, found.records, plan.project_id)
+            await _remember_queries(nodes, state["round_index"], queries, records)
     citations = [action for action in admission.actions if action.kind == "expand_citations"]
     in_paper = [action for action in admission.actions if action.kind == "search_in_paper"]
     provider_ids = await _provider_map(
@@ -412,6 +418,12 @@ async def screen_new(nodes: WorkflowNodes, state: ResearchState) -> dict[str, ob
     plan = await nodes.get_plan(state)
     retrieved = await nodes.load(state["retrieval_artifact_id"], RetrievalResult)
     records, manual_ids = await _round_candidates(nodes, plan, retrieved.records)
+    if not records:
+        return {
+            "screening_artifact_id": None,
+            "selection_artifact_id": None,
+            "stage": "note",
+        }
     bundle = await screen_and_select(records, plan, nodes.context, manual_ids)
     stop = next(
         (

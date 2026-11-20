@@ -106,7 +106,6 @@ async def test_latest_coverage_includes_claims_from_the_final_read():
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="来源异常在产物保存前失败，重试会再次扣费")
 async def test_source_failure_is_recorded_once(monkeypatch: pytest.MonkeyPatch):
     run = await _approved()
     try:
@@ -136,13 +135,12 @@ async def test_source_failure_is_recorded_once(monkeypatch: pytest.MonkeyPatch):
         await run.engine.dispose()
 
 
-@pytest.mark.xfail(strict=True, reason="未满足时停止被接受，空检索仍进入筛选")
 async def test_unmet_stop_does_not_screen_an_empty_round(monkeypatch: pytest.MonkeyPatch):
     run = await _approved()
     calls: list[object] = []
     original = coverage_flow.screen_and_select
 
-    async def only_stop(spec, coverage, round_index, context):
+    async def only_stop(spec, coverage, round_index, context, notes=()):
         question_id = (
             coverage.unmet_question_ids[0]
             if coverage.unmet_question_ids

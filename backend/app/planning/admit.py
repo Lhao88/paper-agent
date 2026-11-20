@@ -242,8 +242,7 @@ def _resolve_stop(
     can_research = remaining_source_requests >= 1 and bool(spec.scope.enabled_sources)
     can_research = can_research or remaining_llm_calls >= 1
     accept = (
-        coverage.saturated
-        or coverage.consecutive_saturated_rounds >= 2
+        coverage.consecutive_saturated_rounds >= 2
         or not can_research
         or not coverage.unmet_question_ids
     )

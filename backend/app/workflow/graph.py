@@ -20,6 +20,10 @@ def route_after_note(state: ResearchState) -> str:
     return "write" if state["stop_reason"] else "begin_round"
 
 
+def route_after_screen(state: ResearchState) -> str:
+    return "note" if state["stage"] == "note" else "read_selected"
+
+
 def build_graph(services: WorkflowNodes, checkpointer: BaseCheckpointSaver) -> CompiledStateGraph:
     graph = StateGraph(ResearchState)
     names = [
@@ -96,7 +100,11 @@ def build_coverage_graph(
     graph.add_edge("begin_round", "propose")
     graph.add_edge("propose", "execute")
     graph.add_edge("execute", "screen_new")
-    graph.add_edge("screen_new", "read_selected")
+    graph.add_conditional_edges(
+        "screen_new",
+        route_after_screen,
+        {"read_selected": "read_selected", "note": "note"},
+    )
     graph.add_edge("read_selected", "note")
     graph.add_conditional_edges(
         "note",

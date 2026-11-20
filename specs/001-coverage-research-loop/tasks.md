@@ -252,5 +252,5 @@ Task: "T009 frontend/src/features/research/PlanEditor.test.tsx"
 - [X] T046 计算本轮新高相关论文时排除已经在项目库中的重复命中，避免把旧论文当成新论文并推迟饱和 per FR-022 (partial)
 - [X] T047 在 `backend/app/workflow/coverage_flow.py` 的准入状态带上筛选相关性和是否已有解析文档，使精读和篇内检索按这些条件放行 per Edge Cases (partial)
 - [X] T048 让已经纳入且带解析文档的论文进入本轮候选，即使它没有出现在本轮新检索结果里 per FR-012 (partial)
-- [ ] T049 来源调用抛错时记录该动作失败并保留已保存结果，同一次检索的重试不得再次扣来源预算 per Edge Cases (partial)
-- [ ] T050 必填目标未满足时拒绝单独停止；补检索没有论文时不得进入空筛选 per Edge Cases (partial)
+- [X] T049 来源调用抛错时记录该动作失败并保留已保存结果，同一次检索的重试不得再次扣来源预算 per Edge Cases (partial)
+- [X] T050 必填目标未满足时拒绝单独停止；补检索没有论文时不得进入空筛选 per Edge Cases (partial)
