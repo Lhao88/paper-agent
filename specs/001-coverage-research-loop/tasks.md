@@ -262,4 +262,4 @@ Task: "T009 frontend/src/features/research/PlanEditor.test.tsx"
 - [X] T051 在 `backend/app/workflow/coverage_flow.py` 的准入状态写入仍为空的必填列和已用篇内检索次数，使篇内检索只对空列放行，并执行该运行冻结的每篇上限 per Edge Cases (partial)
 - [X] T052 连续饱和只按已经完成的轮次计数，尚未执行的轮次不得预先记成饱和，因此一轮空检索之后仍拒绝单独停止 per FR-022 (partial)
 - [X] T053 规划动作全部无法执行且预算仍够时补一条缺口检索，预算不够则停止，不得空转完剩余轮次 per Edge Cases (partial)
-- [ ] T054 一跳引文或篇内检索失败时在该轮笔记记录动作警告并保留已保存检索结果，重试不得再次扣已扣的来源预算 per Edge Cases (partial)
+- [X] T054 一跳引文或篇内检索失败时在该轮笔记记录动作警告并保留已保存检索结果，重试不得再次扣已扣的来源预算 per Edge Cases (partial)

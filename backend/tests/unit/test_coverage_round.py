@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.planning.admit import PaperAdmission, admit_actions
-from app.schemas.contracts import ResearchPlan, RetrievalResult, RoundAction, RoundPlan
+from app.schemas.contracts import PaperRecord, ResearchPlan, RetrievalResult, RoundAction, RoundPlan
 from app.tools.citations import CitationExpansion
 from app.tools.search_in_paper import SearchInPaperResult
 from app.workflow import coverage_flow
@@ -226,6 +226,103 @@ async def test_execute_runs_admitted_citation_and_in_paper_actions(
     assert calls == {"cite": 1, "paper": 1}
     assert page.executed_action_ids == ["search-1", "cite-1", "paper-1"]
     assert "fulltext-1" not in page.executed_action_ids
+
+
+async def test_failed_citation_and_in_paper_keep_the_saved_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    saved = PaperRecord(paper_id=paper_id, title="已保存论文", sources=[])
+    reserves = {"count": 0}
+
+    async def expand(*args, **kwargs) -> CitationExpansion:
+        raise RuntimeError("citation down")
+
+    async def in_paper(*args, **kwargs) -> SearchInPaperResult:
+        raise RuntimeError("in-paper down")
+
+    async def provider_map(nodes, paper_ids):
+        return {paper_id: "s2-seed"}
+
+    async def chunks_for(nodes, paper_ids):
+        return {paper_id: []}
+
+    async def persist(nodes, records, project_id):
+        return list(records)
+
+    async def search(*args, **kwargs) -> RetrievalResult:
+        return RetrievalResult(records=[saved], warnings=[])
+
+    async def reserve(*args, **kwargs) -> None:
+        reserves["count"] += 1
+
+    monkeypatch.setattr(coverage_flow, "expand_citations", expand, raising=False)
+    monkeypatch.setattr(coverage_flow, "search_in_paper", in_paper, raising=False)
+    monkeypatch.setattr(coverage_flow, "_provider_map", provider_map, raising=False)
+    monkeypatch.setattr(coverage_flow, "_chunks_for", chunks_for, raising=False)
+    monkeypatch.setattr(coverage_flow, "_artifact", _stored)
+    monkeypatch.setattr(coverage_flow, "_spec", _spec)
+    monkeypatch.setattr(coverage_flow, "_admissions", _admissions)
+    monkeypatch.setattr(coverage_flow, "_remaining", _remaining)
+    monkeypatch.setattr(coverage_flow, "_persist", persist)
+    monkeypatch.setattr(coverage_flow, "_remember_queries", _noop)
+    monkeypatch.setattr(coverage_flow, "_library_excluded", _excluded)
+    monkeypatch.setattr(coverage_flow, "manual_materials", _materials)
+    monkeypatch.setattr(coverage_flow, "search_works", search)
+    monkeypatch.setattr(coverage_flow, "build_sources", lambda settings, client: {})
+    monkeypatch.setattr(coverage_flow, "_paper_id", lambda: paper_id, raising=False)
+    nodes = _Nodes()
+    nodes.context.budget.reserve_source_request = reserve
+    nodes.context.budget.reserve_call = _async_none
+    plan = await nodes.get_plan({})
+    state = initial_state(str(nodes.context.run_id))
+    state["plan_id"] = str(plan.plan_id)
+    state["round_index"] = 1
+    state["coverage_artifact_id"] = "coverage"
+    nodes.get_plan = _plan(plan)  # type: ignore[method-assign]
+    nodes.saved[f"coverage-plan:{nodes.context.run_id}:1"] = RoundPlan(
+        actions=[
+            RoundAction(
+                action_id="search-1",
+                kind="search_works",
+                question_ids=["q1"],
+                rationale="检索",
+                query="graph",
+                providers=["openalex"],
+            ),
+            RoundAction(
+                action_id="cite-1",
+                kind="expand_citations",
+                question_ids=["q1"],
+                rationale="引文",
+                paper_ids=[paper_id],
+                direction="references",
+                providers=["semantic_scholar"],
+            ),
+            RoundAction(
+                action_id="paper-1",
+                kind="search_in_paper",
+                question_ids=["q1"],
+                rationale="篇内",
+                query="方法",
+                paper_ids=[paper_id],
+                column_ids=["c1"],
+            ),
+        ]
+    ).model_dump(mode="json")
+    state.update(await coverage_flow.execute(nodes, state))
+    stored = RetrievalResult.model_validate(
+        nodes.saved[f"coverage-round:{nodes.context.run_id}:1"]
+    )
+    page = await coverage_flow._page(nodes, state)
+    assert [item.paper_id for item in stored.records] == [paper_id]
+    assert "cite-1" not in page.executed_action_ids
+    assert "paper-1" not in page.executed_action_ids
+    assert "action_failed:cite-1" in page.source_failures
+    assert "action_failed:paper-1" in page.source_failures
+    charged = reserves["count"]
+    await coverage_flow.execute(nodes, state)
+    assert reserves["count"] == charged
 
 
 def _plan(plan: ResearchPlan):

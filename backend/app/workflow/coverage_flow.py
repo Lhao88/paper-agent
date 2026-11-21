@@ -345,26 +345,30 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
                 if not ready:
                     continue
                 provider = action.providers[0] if action.providers else "semantic_scholar"
-                await nodes.context.budget.reserve_source_request(
-                    nodes.context.run_id, nodes.context.settings.max_source_requests
-                )
-                async with nodes.factory() as session:
-                    for paper_id, provider_paper_id in ready:
-                        expansion = await expand_citations(
-                            session,
-                            project_id=plan.project_id,
-                            from_paper_id=paper_id,
-                            provider_paper_id=provider_paper_id,
-                            provider=provider,
-                            direction=action.direction,
-                            limit=nodes.context.settings.max_citation_neighbors,
-                            client=client,
-                            settings=nodes.context.settings,
-                        )
-                        warnings.extend(expansion.warnings)
-                        records.extend(
-                            await _persist(nodes, expansion.records, plan.project_id)
-                        )
+                try:
+                    await nodes.context.budget.reserve_source_request(
+                        nodes.context.run_id, nodes.context.settings.max_source_requests
+                    )
+                    async with nodes.factory() as session:
+                        for paper_id, provider_paper_id in ready:
+                            expansion = await expand_citations(
+                                session,
+                                project_id=plan.project_id,
+                                from_paper_id=paper_id,
+                                provider_paper_id=provider_paper_id,
+                                provider=provider,
+                                direction=action.direction,
+                                limit=nodes.context.settings.max_citation_neighbors,
+                                client=client,
+                                settings=nodes.context.settings,
+                            )
+                            warnings.extend(expansion.warnings)
+                            records.extend(
+                                await _persist(nodes, expansion.records, plan.project_id)
+                            )
+                except Exception:
+                    warnings.append(f"action_failed:{action.action_id}")
+                    continue
                 executed.append(action.action_id)
     for action in in_paper:
         flat = [
@@ -373,21 +377,26 @@ async def execute(nodes: WorkflowNodes, state: ResearchState) -> dict[str, objec
             for chunk in chunks.get(paper_id, [])
         ]
         digest = hashlib.sha256(action.model_dump_json().encode()).hexdigest()
-        await nodes.context.budget.reserve_call(
-            nodes.context.run_id,
-            f"tool:search_in_paper:{state['round_index']}:{action.action_id}",
-            digest,
-            512,
-        )
-        found_chunks = await search_in_paper(
-            flat,
-            action.query or "",
-            nodes.context.settings.embedding_mode,
-            limit=5,
-            extract=_extract_nothing,
-        )
+        try:
+            await nodes.context.budget.reserve_call(
+                nodes.context.run_id,
+                f"tool:search_in_paper:{state['round_index']}:{action.action_id}",
+                digest,
+                512,
+            )
+            found_chunks = await search_in_paper(
+                flat,
+                action.query or "",
+                nodes.context.settings.embedding_mode,
+                limit=5,
+                extract=_extract_nothing,
+            )
+        except Exception:
+            warnings.append(f"action_failed:{action.action_id}")
+            continue
         if found_chunks.failure:
-            warnings.append(found_chunks.failure)
+            warnings.append(f"action_failed:{action.action_id}")
+            continue
         executed.append(action.action_id)
     _, _, excluded = await manual_materials(nodes.context, plan.project_id)
     excluded |= await _library_excluded(nodes, plan.project_id)
@@ -608,7 +617,9 @@ async def _page(nodes: WorkflowNodes, state: ResearchState) -> NotebookPage:
 def _source_failure_limits(retrieval: RetrievalResult) -> list[str]:
     limits: list[str] = []
     for warning in retrieval.warnings:
-        if warning.startswith("source_unavailable:") or warning.startswith("source_failed:"):
+        if warning.startswith("action_failed:"):
+            limits.append(warning)
+        elif warning.startswith("source_unavailable:") or warning.startswith("source_failed:"):
             limits.append(f"source_failed:{warning.split(':', 1)[1]}")
     return list(dict.fromkeys(limits))
 
