@@ -3,13 +3,13 @@ from uuid import uuid4
 
 import pytest
 
-from app.planning.admit import PaperAdmission
+from app.planning.admit import PaperAdmission, admit_actions
 from app.schemas.contracts import ResearchPlan, RetrievalResult, RoundAction, RoundPlan
 from app.tools.citations import CitationExpansion
 from app.tools.search_in_paper import SearchInPaperResult
 from app.workflow import coverage_flow
 from app.workflow.state import initial_state
-from tests.unit.test_admit import coverage, research_spec
+from tests.unit.test_admit import action, coverage, research_spec
 from tests.unit.test_planning import context_with
 from tests.unit.test_round_planner import _page
 
@@ -64,6 +64,51 @@ _PAGES = {
     "n1": _page(1, "缺口-第二页"),
     "n2": _page(2, "缺口-第三页"),
 }
+
+
+async def test_unfinished_round_keeps_the_completed_saturation_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def history(nodes, round_index):
+        return set(), 1, 0
+
+    async def spec_for(nodes, plan_id):
+        return research_spec()
+
+    async def no_claims(nodes, project_id):
+        return []
+
+    captured: dict[str, object] = {}
+
+    async def store(nodes, state, report):
+        captured["report"] = report
+        return uuid4()
+
+    monkeypatch.setattr(coverage_flow, "_coverage_history", history)
+    monkeypatch.setattr(coverage_flow, "_spec", spec_for)
+    monkeypatch.setattr(coverage_flow, "_claims", no_claims)
+    monkeypatch.setattr(coverage_flow, "_remaining", _remaining)
+    monkeypatch.setattr(coverage_flow, "_store_round_coverage", store)
+    nodes = _Nodes()
+    plan = await nodes.get_plan({})
+    state = initial_state(str(nodes.context.run_id))
+    state["plan_id"] = str(plan.plan_id)
+    state["round_index"] = 1
+    await coverage_flow.begin_round(nodes, state)
+    report = captured["report"]
+    assert report.consecutive_saturated_rounds == 1
+    assert report.saturated is False
+    decision = admit_actions(
+        research_spec(),
+        [action("stop", action_id="stop", providers=[], query=None)],
+        report,
+        [],
+        remaining_source_requests=4,
+        remaining_llm_calls=4,
+        remaining_deep_reads=4,
+    )
+    assert decision.synthesized_from_gap is not None
+    assert decision.rejected[0].reason == "unmet_coverage"
 
 
 async def test_propose_passes_only_the_last_two_notes(monkeypatch: pytest.MonkeyPatch) -> None:

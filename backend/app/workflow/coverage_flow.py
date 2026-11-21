@@ -229,6 +229,9 @@ async def begin_round(nodes: WorkflowNodes, state: ResearchState) -> dict[str, o
         remaining_llm_calls=remaining[1],
         remaining_deep_reads=remaining[2],
     )
+    report = report.model_copy(
+        update={"saturated": False, "consecutive_saturated_rounds": consecutive}
+    )
     identifier = await _store_round_coverage(nodes, state, report)
     return {"coverage_artifact_id": str(identifier), "stage": "propose"}
 
@@ -844,17 +847,69 @@ async def _admissions(nodes: WorkflowNodes, project_id: UUID) -> list[PaperAdmis
         value = artifact.payload_json.get("relevance")
         relevance[artifact.paper_id] = value if isinstance(value, int) else None
     admitted = []
+    spec = await _spec(nodes, nodes.context.plan_id) if nodes.context.plan_id else None
+    required = _required_columns(spec) if spec is not None else []
+    claims = await _claims(nodes, project_id)
+    claimed: dict[UUID, set[str]] = {}
+    for claim in claims:
+        claimed.setdefault(claim.paper_id, set()).add(claim.column_id)
+    calls = await _in_paper_calls(nodes)
     for member in members:
         base = _admission(member.paper_id, member.user_decision)
+        filled = claimed.get(member.paper_id, set())
         admitted.append(
             base.model_copy(
                 update={
                     "relevance": relevance.get(member.paper_id),
                     "has_document": member.paper_id in documents,
+                    "empty_required_column_ids": [
+                        column_id for column_id in required if column_id not in filled
+                    ],
+                    "search_in_paper_calls": calls.get(member.paper_id, 0),
                 }
             )
         )
     return admitted
+
+
+def _required_columns(spec: ResearchSpec) -> list[str]:
+    return [
+        column.column_id
+        for column in spec.columns
+        if column.required
+        or any(column.column_id in target.required_column_ids for target in spec.coverage)
+    ]
+
+
+async def _in_paper_calls(nodes: WorkflowNodes) -> dict[UUID, int]:
+    async with nodes.factory() as session:
+        rows = list(
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.run_id == nodes.context.run_id,
+                    Artifact.kind.in_(["round_plan", "executed_actions"]),
+                )
+            )
+        )
+    plans: dict[str, RoundPlan] = {}
+    executed: dict[str, set[str]] = {}
+    for row in rows:
+        if row.kind == "round_plan":
+            plans[row.operation_key] = RoundPlan.model_validate(row.payload_json)
+        else:
+            raw = row.payload_json.get("executed_action_ids", [])
+            done = {str(item) for item in raw} if isinstance(raw, list) else set()
+            executed[row.operation_key] = done
+    counts: dict[UUID, int] = {}
+    for key, plan in plans.items():
+        suffix = key.removeprefix("coverage-plan:")
+        done = executed.get(f"coverage-executed:{suffix}", set())
+        for action in plan.actions:
+            if action.kind != "search_in_paper" or action.action_id not in done:
+                continue
+            for paper_id in action.paper_ids:
+                counts[paper_id] = counts.get(paper_id, 0) + 1
+    return counts
 
 
 def _admission(paper_id: UUID, decision: str | None) -> PaperAdmission:

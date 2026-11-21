@@ -84,6 +84,17 @@ def admit_actions(
         remaining_llm_calls,
         stop_reason,
     )
+    if (
+        not admitted
+        and synthesized is None
+        and coverage.unmet_question_ids
+        and coverage.consecutive_saturated_rounds < 2
+    ):
+        if remaining_source_requests >= 1 and spec.scope.enabled_sources:
+            synthesized = _gap_search(spec, coverage)
+            admitted = [synthesized] if synthesized is not None else []
+        if synthesized is None:
+            stop_reason = "budget_exhausted"
     if max_actions_per_round < len(admitted):
         for action in admitted[max_actions_per_round:]:
             rejected.append(RejectedAction(action_id=action.action_id, reason="action_cap"))

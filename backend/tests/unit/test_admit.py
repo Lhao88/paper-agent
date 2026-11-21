@@ -372,6 +372,35 @@ def test_unmet_stop_is_replaced_by_gap_search() -> None:
     assert result.synthesized_from_gap.action_id not in {item.action_id for item in result.rejected}
 
 
+def test_unexecutable_round_searches_the_gap_or_stops() -> None:
+    blocked = admit_actions(
+        research_spec(),
+        [action("search_works", action_id="blocked", providers=["arxiv"], query="不可用来源")],
+        coverage(unmet_question_ids=["q1"], saturated=False, consecutive_saturated_rounds=1),
+        [],
+        remaining_source_requests=4,
+        remaining_llm_calls=4,
+        remaining_deep_reads=4,
+    )
+    assert blocked.synthesized_from_gap is not None
+    assert blocked.actions == [blocked.synthesized_from_gap]
+    assert blocked.synthesized_from_gap.kind == "search_works"
+    assert blocked.stop_reason is None
+    assert blocked.rejected[0].reason == "source_not_enabled"
+    exhausted = admit_actions(
+        research_spec(),
+        [action("search_works", action_id="blocked", providers=["arxiv"], query="不可用来源")],
+        coverage(unmet_question_ids=["q1"], saturated=False, consecutive_saturated_rounds=0),
+        [],
+        remaining_source_requests=0,
+        remaining_llm_calls=0,
+        remaining_deep_reads=0,
+    )
+    assert exhausted.actions == []
+    assert exhausted.synthesized_from_gap is None
+    assert exhausted.stop_reason == "budget_exhausted"
+
+
 def test_saturated_rounds_accept_stop_without_synthesis() -> None:
     result = admit_actions(
         research_spec(),

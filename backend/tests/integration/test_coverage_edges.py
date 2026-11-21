@@ -257,6 +257,59 @@ async def test_admitted_citation_action_is_executed_before_it_is_noted():
         await run.engine.dispose()
 
 
+async def test_admission_state_keeps_empty_columns_and_search_counts():
+    run = await _finished(1)
+    try:
+        nodes = await _reopen(run)
+        spec = ResearchSpec.model_validate((await _plan_row(run)).spec_json)
+        required = {
+            column.column_id
+            for column in spec.columns
+            if column.required
+            or any(column.column_id in target.required_column_ids for target in spec.coverage)
+        }
+        async with run.factory() as session:
+            claims = list(
+                await session.scalars(select(Claim).where(Claim.project_id == run.project_id))
+            )
+            member = await session.scalar(
+                select(ProjectPaper).where(ProjectPaper.project_id == run.project_id)
+            )
+        assert member is not None and required
+        claimed = {
+            claim.column_id for claim in claims if claim.paper_id == member.paper_id
+        }
+        await nodes.save(
+            f"coverage-plan:{run.run_id}:9",
+            "round_plan",
+            RoundPlan(
+                actions=[
+                    RoundAction(
+                        action_id=f"in-{index}",
+                        kind="search_in_paper",
+                        question_ids=[spec.questions[0].question_id],
+                        rationale="篇内",
+                        query="方法",
+                        paper_ids=[member.paper_id],
+                        column_ids=[next(iter(required))],
+                    )
+                    for index in range(3)
+                ]
+            ),
+        )
+        await nodes.save(
+            f"coverage-executed:{run.run_id}:9",
+            "executed_actions",
+            coverage_flow.ExecutedActions(executed_action_ids=["in-0", "in-1", "in-2"]),
+        )
+        admitted = {item.paper_id: item for item in await _admissions(nodes, run.project_id)}
+        paper = admitted[member.paper_id]
+        assert set(paper.empty_required_column_ids) == required - claimed
+        assert paper.search_in_paper_calls == 3
+    finally:
+        await run.engine.dispose()
+
+
 async def test_admission_state_keeps_relevance_and_documents():
     run = await _finished(1)
     try:
